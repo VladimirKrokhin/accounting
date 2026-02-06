@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import hashlib
-from infrastructure.repository import FakeAccountRepository
-from domain import (
+from adapters.repository import AbstractAccountRepository
+from domain.models import (
     AccountId,
     PaymentEntryIsNotUniqueError,
     TransactionId,
@@ -10,6 +10,7 @@ from domain import (
     Account,
     UserId,
 )
+from domain.messages import HandlePaymentSystemTransaction
 
 
 class SignatureIsNotValid(Exception):
@@ -53,11 +54,11 @@ def validate_transaction_signature(
 
 
 def add_new_transaction(
-    repository: FakeAccountRepository,
+    repository: AbstractAccountRepository,
     account: Account,
     transaction_id: TransactionId,
     amount: Money,
-) -> PaymentEntryId:
+) -> tuple[AccountId, PaymentEntryId]:
     """
     Добавить новую транзакцию к счету. Не начисляет средства на баланс.
     """
@@ -72,25 +73,16 @@ def add_new_transaction(
         amount=amount,
     )
 
-    return pe_id
+    acc_id = repository.save_account(account)
 
-
-@dataclass(frozen=True)
-class HandlePaymentSystemTransactionDto:
-    """DTO для обработки транзакции от платежной системы."""
-
-    transaction_id: TransactionId
-    user_id: UserId
-    account_id: AccountId
-    amount: Money
-    signature: str
+    return (acc_id, pe_id)
 
 
 def process_payment_system_transaction(
-    repository: FakeAccountRepository,
-    transaction: HandlePaymentSystemTransactionDto,
+    message: HandlePaymentSystemTransaction,
+    account_repository: AbstractAccountRepository,
     secret: str,
-) -> tuple[AccountId, PaymentEntryId]:
+) -> tuple[AccountId, PaymentEntryId, bool]:
     """
     Обработать транзакцию от платежной системы.
 
@@ -104,11 +96,11 @@ def process_payment_system_transaction(
 
     # Обработать транзакцию от платежной системы.
 
-    transaction_id = transaction.transaction_id
-    user_id = transaction.user_id
-    account_id = transaction.account_id
-    amount = transaction.amount
-    signature = transaction.signature
+    transaction_id = message.transaction_id
+    user_id = message.user_id
+    account_id = message.account_id
+    amount = message.amount
+    signature = message.signature
 
     # 1. Проверить подпись объекта
     validate_transaction_signature(
@@ -121,7 +113,7 @@ def process_payment_system_transaction(
     )
 
     # 2. Проверить существует ли у пользователя такой счет - если нет, его необходимо создать
-    is_user_has_account: bool = repository.is_user_has_account(
+    is_user_has_account: bool = account_repository.is_user_has_account(
         user_id=user_id, account_id=account_id
     )
 
@@ -131,21 +123,23 @@ def process_payment_system_transaction(
             balance=Money(0),
             user_id=user_id,
         )
-        account_id = repository.save_account(account)
+        account_id = account_repository.save_account(account)
 
-    account = repository.get_account_by_id(account_id=account_id)
+    # Был ли создан счет?
+    is_account_created = not is_user_has_account
 
     # 3. Сохранить транзакцию в базе данных
-    pe_id = add_new_transaction(
-        repository=repository,
+    account = account_repository.get_account_by_id(account_id=account_id)
+    account_id, pe_id = add_new_transaction(
+        repository=account_repository,
         account=account,
         transaction_id=transaction_id,
         amount=amount,
     )
-    account_id = repository.save_account(account)
 
     # 4. Начислить сумму транзакции на счет пользователя
+    account = account_repository.get_account_by_id(account_id)
     account.accrue_payment_entry(pe_id)
-    account_id = repository.save_account(account)
+    account_id = account_repository.save_account(account)
 
-    return account_id, pe_id
+    return account_id, pe_id, is_account_created

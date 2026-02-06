@@ -1,0 +1,7 @@
+from enum import IntEnum
+
+
+class StatusCodes(IntEnum):
+    SUCCESS_CREATED = 201
+    ERROR_CONFLICT = 409
+    ERROR_UNPROCESSABLE_ENTITY = 422

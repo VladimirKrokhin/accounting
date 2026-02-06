@@ -12,7 +12,7 @@ Money = NewType(name="Money", tp=Decimal)
 
 
 def next_payment_entry_id():
-    return uuid.uuid4()
+    return PaymentEntryId(uuid.uuid4())
 
 
 @dataclass
@@ -23,7 +23,7 @@ class PaymentEntry:
     transaction_id: TransactionId
     account_id: AccountId
     amount: Money
-    is_accrued: bool = False  # Зачислена на счет?
+    is_accrued: bool = False  # Зачислен на счет?
 
     def __hash__(self) -> int:
         return hash(self.transaction_id)
@@ -54,7 +54,7 @@ class PaymentEntryDoesNotExistsError(PaymentEntryError):
 
 
 class PaymentEntryAlreadyAccrued(PaymentEntryError):
-    """Платеж не уже начислен."""
+    """Платеж уже начислен."""
 
     pass
 
