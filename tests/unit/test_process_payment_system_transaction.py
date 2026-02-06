@@ -1,7 +1,7 @@
 import pytest
 
 from domain import Account, AccountId, Money, TransactionId, UserId
-from infrastructure.repository import FakeAccountRepository
+from adapters.repository import FakeAccountRepository
 from services.payment_system import (
     HandlePaymentSystemTransactionDto,
     process_payment_system_transaction,
