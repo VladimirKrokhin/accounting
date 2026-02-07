@@ -35,17 +35,18 @@ async def handle_transaction(request: Request) -> HTTPResponse:
         account_id, pe_id, is_account_created = handler(transaction)
     except SignatureIsNotValid:
         return json(
-            {"message": "signature is not valid"},
+            {"status": "error", "message": "signature is not valid"},
             status=StatusCodes.ERROR_UNPROCESSABLE_ENTITY,
         )
     except PaymentEntryIsNotUniqueError:
         return json(
-            {"message": "transaction is already exists"},
+            {"status": "error", "message": "transaction is already exists"},
             status=StatusCodes.ERROR_CONFLICT,
         )
 
     return json(
         {
+            "status": "success",
             "message": "transaction processed",
             "account_id": account_id,
             "payment_id": str(pe_id),

@@ -1,14 +1,16 @@
+from decimal import Decimal
+from uuid import UUID
 import pytest
-from domain import TransactionId, AccountId, UserId, Money
+from domain.models import TransactionId, AccountId, UserId, Money
 from services.payment_system import SignatureIsNotValid, validate_transaction_signature
 
 
 def test_validate_transaction_signature_success() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132b")
     account_id = 1
     user_id = 1
-    amount = 100
+    amount = Decimal(100)
     secret_key = "gfdmhghif38yrf9ew0jkf32"
 
     validate_transaction_signature(
@@ -23,10 +25,10 @@ def test_validate_transaction_signature_success() -> None:
 
 def test_validate_transaction_signature_wrong_transaction_key() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132a"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132a")
     account_id = 1
     user_id = 1
-    amount = 100
+    amount = Decimal(100)
     secret_key = "gfdmhghif38yrf9ew0jkf32"
 
     with pytest.raises(SignatureIsNotValid):
@@ -42,10 +44,10 @@ def test_validate_transaction_signature_wrong_transaction_key() -> None:
 
 def test_validate_transaction_signature_wrong_account_key() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132b")
     account_id = 2
     user_id = 1
-    amount = 100
+    amount = Decimal(100)
     secret_key = "gfdmhghif38yrf9ew0jkf32"
 
     with pytest.raises(SignatureIsNotValid):
@@ -61,10 +63,10 @@ def test_validate_transaction_signature_wrong_account_key() -> None:
 
 def test_validate_transaction_signature_wrong_user_id() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132b")
     account_id = 1
     user_id = 2
-    amount = 100
+    amount = Decimal(100)
     secret_key = "gfdmhghif38yrf9ew0jkf32"
 
     with pytest.raises(SignatureIsNotValid):
@@ -80,10 +82,10 @@ def test_validate_transaction_signature_wrong_user_id() -> None:
 
 def test_validate_transaction_signature_wrong_amount() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132b")
     account_id = 1
     user_id = 1
-    amount = 101
+    amount = Decimal(101)
     secret_key = "gfdmhghif38yrf9ew0jkf32"
 
     with pytest.raises(SignatureIsNotValid):
@@ -99,10 +101,10 @@ def test_validate_transaction_signature_wrong_amount() -> None:
 
 def test_validate_transaction_signature_wrong_secret_key() -> None:
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
-    transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b"
+    transaction_id = UUID("5eae174f-7cd0-472c-bd36-35660f00132b")
     account_id = 1
     user_id = 1
-    amount = 100
+    amount = Decimal(100)
     secret_key = "gfdmhghif38yrf9ew0jkf33"
 
     with pytest.raises(SignatureIsNotValid):

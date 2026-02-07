@@ -84,11 +84,13 @@ class FakeAccountRepository(AbstractAccountRepository):
         return False
 
     def save_account(self, account: Account) -> AccountId:
-        if not self.is_account_exists(account):
+        if account.id_ is None:
             self.account_serial += 1
-            account.id_ = self.account_serial
+            account.id_ = AccountId(self.account_serial)
             for entry in account.payments:
                 entry.account_id = account.id_
+        elif not self.is_account_exists(account.id_):
+            self.account_serial = account.id_ + 1
 
         self.storage[account.id_] = account
 

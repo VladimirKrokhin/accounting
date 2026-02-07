@@ -10,7 +10,7 @@ from adapters.sqlalchemy.models import (
     Account as SQLAlchemyAccount,
     PaymentEntry as SQLAlchemyPaymentEntry,
 )
-from domain import (
+from domain.models import (
     Money,
     AccountId,
     PaymentEntryId,
@@ -29,14 +29,14 @@ def test_payment_to_domain(sample_ids):
         id=sample_ids["payment"],
         transaction_id=sample_ids["transaction"],
         account_id=sample_ids["account"],
-        amount=Money("150.00"),
+        amount=Money(Decimal("150.00")),
         is_accrued=True,
     )
 
     domain_payment = PaymentEntryMapper.to_domain(orm_payment)
 
     assert domain_payment.id_ == PaymentEntryId(sample_ids["payment"])
-    assert domain_payment.amount == Money(Money("150.00"))
+    assert domain_payment.amount == Money(Decimal("150.00"))
 
 
 def test_account_to_domain_mapping(sample_ids):
@@ -44,7 +44,7 @@ def test_account_to_domain_mapping(sample_ids):
     orm_account = SQLAlchemyAccount(
         id=sample_ids["account"],
         user_id=sample_ids["user"],  # FK на account_user.id
-        balance=Money("1000.00"),
+        balance=Money(Decimal("1000.00")),
         payments=[],
     )
 
@@ -75,13 +75,13 @@ def test_account_mapping_with_payments(sample_ids):
     orm_payment = SQLAlchemyPaymentEntry(
         id=sample_ids["payment"],
         transaction_id=sample_ids["transaction"],
-        amount=Money("50.00"),
+        amount=Money(Decimal("50.00")),
         is_accrued=False,
     )
     orm_account = SQLAlchemyAccount(
         id=sample_ids["account"],
         user_id=sample_ids["user"],
-        balance=Money("500.00"),
+        balance=Money(Decimal("500.00")),
         payments=[orm_payment],
     )
 

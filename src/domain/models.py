@@ -21,7 +21,7 @@ class PaymentEntry:
 
     id_: PaymentEntryId
     transaction_id: TransactionId
-    account_id: AccountId
+    account_id: AccountId | None
     amount: Money
     is_accrued: bool = False  # Зачислен на счет?
 
@@ -64,7 +64,7 @@ class Account:
     """Счет."""
 
     user_id: UserId
-    balance: Money = Money(0)
+    balance: Money = Money(Decimal(0))
 
     payments: set[PaymentEntry] = field(default_factory=set)
     id_: AccountId | None = None
@@ -81,7 +81,7 @@ class Account:
         entry = PaymentEntry(
             id_=pe_id,
             transaction_id=transaction_id,
-            account_id=self.id_,
+            account_id=AccountId(self.id_) if self.id_ is not None else None,
             amount=amount,
             is_accrued=False,  # Еще не зачислен
         )
@@ -115,7 +115,7 @@ class Account:
         if payment.is_accrued:
             raise PaymentEntryAlreadyAccrued("Платеж уже начислен")
 
-        self.balance += payment.amount
+        self.balance += payment.amount  # pyright: ignore[reportAttributeAccessIssue]
         payment.is_accrued = True
 
     def __hash__(self) -> int:

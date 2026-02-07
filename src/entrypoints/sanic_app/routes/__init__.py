@@ -1,10 +1,7 @@
 from sanic import Blueprint
-from entrypoints.sanic_app.routes.admin import admin_bp
-from entrypoints.sanic_app.routes.auth import auth_bp
-from entrypoints.sanic_app.routes.payments import payment_bp
-from entrypoints.sanic_app.routes.user import user_bp
+from entrypoints.sanic_app.routes.v1 import api_v1
 
 
 __all__ = ["api"]
 
-api = Blueprint.group(admin_bp, auth_bp, payment_bp, user_bp, url_prefix="/api")
+api = Blueprint.group(api_v1, url_prefix="/api")

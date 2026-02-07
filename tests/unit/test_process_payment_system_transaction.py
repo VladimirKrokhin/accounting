@@ -1,9 +1,11 @@
+from decimal import Decimal
+from uuid import UUID, uuid4
 import pytest
 
-from domain import Account, AccountId, Money, TransactionId, UserId
+from domain.models import Account, AccountId, Money, TransactionId, UserId
+from domain.messages import HandlePaymentSystemTransaction
 from adapters.repository import FakeAccountRepository
 from services.payment_system import (
-    HandlePaymentSystemTransactionDto,
     process_payment_system_transaction,
 )
 
@@ -12,11 +14,11 @@ def test_process_payment_system_transaction_success_user_has_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
 
-    transaction_id = TransactionId("5eae174f-7cd0-472c-bd36-35660f00132b")
+    transaction_id = TransactionId(UUID("5eae174f-7cd0-472c-bd36-35660f00132b"))
     user_id = UserId(1)
     account_id = AccountId(1)
-    amount = Money(100)
-    start_balance = Money(0)
+    amount = Money(Decimal(100))
+    start_balance = Money(Decimal(0))
 
     repository = FakeAccountRepository()
 
@@ -27,7 +29,7 @@ def test_process_payment_system_transaction_success_user_has_account():
     )
     repository.save_account(account)
 
-    dto = HandlePaymentSystemTransactionDto(
+    dto = HandlePaymentSystemTransaction(
         transaction_id=transaction_id,
         user_id=user_id,
         account_id=account_id,
@@ -36,8 +38,8 @@ def test_process_payment_system_transaction_success_user_has_account():
     )
 
     process_payment_system_transaction(
-        repository=repository,
-        transaction=dto,
+        message=dto,
+        account_repository=repository,
         secret=secret,
     )
 
@@ -59,14 +61,14 @@ def test_process_payment_system_transaction_success_user_has_not_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
 
-    transaction_id = TransactionId("5eae174f-7cd0-472c-bd36-35660f00132b")
+    transaction_id = TransactionId(UUID("5eae174f-7cd0-472c-bd36-35660f00132b"))
     user_id = UserId(1)
-    amount = Money(100)
+    amount = Money(Decimal(100))
     account_id = AccountId(1)
 
     repository = FakeAccountRepository()
 
-    dto = HandlePaymentSystemTransactionDto(
+    dto = HandlePaymentSystemTransaction(
         transaction_id=transaction_id,
         user_id=user_id,
         account_id=account_id,
@@ -78,8 +80,8 @@ def test_process_payment_system_transaction_success_user_has_not_account():
     assert not repository.is_user_has_account(user_id=user_id, account_id=account_id)
 
     pe_id = process_payment_system_transaction(
-        repository=repository,
-        transaction=dto,
+        message=dto,
+        account_repository=repository,
         secret=secret,
     )
 
