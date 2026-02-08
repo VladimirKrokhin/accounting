@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from domain.models import UserId
@@ -7,6 +8,14 @@ from domain.models import UserId
 class UserType(StrEnum):
     ADMIN = "admin"
     USER = "user"
+
+
+@dataclass(frozen=True)
+class UserDataDTO:
+    user_id: UserId
+    email: str
+    full_name: str
+    user_type: UserType
 
 
 @dataclass(frozen=True)
@@ -20,6 +29,7 @@ class UserDTO:
     email: str
     full_name: str
     user_type: UserType
+    password_hash: str
 
     user_id: UserId | None = None
 
@@ -33,4 +43,4 @@ class CreateOrUpdateUserDTO:
 @dataclass(frozen=True)
 class AuthSuccessDTO:
     token: str
-    data: UserDTO
+    data: UserDataDTO

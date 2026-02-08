@@ -23,6 +23,7 @@ async def attach_dependencies(app):
         user_id: UserDTO(
             user_id=user_id,
             email="test@user.example",
+            password_hash="$2b$12$7T/BsPgD4IrwlvYFEQb6Wug27mxMQ2tBKEiTQpwVk8i6YJQvKCMly",  # test_user
             full_name="Test User",
             user_type=UserType.USER,
         )

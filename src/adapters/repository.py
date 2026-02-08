@@ -12,6 +12,10 @@ from adapters.sqlalchemy.mappers import (
 from dtos import UserDTO
 
 
+class UserDoesNotExists(Exception):
+    pass
+
+
 class AbstractAccountRepository(metaclass=ABCMeta):
     """
     Репозитория для счетов пользователей.
@@ -250,6 +254,10 @@ class AbstractUserRepository(metaclass=ABCMeta):
         """Получить список пользователей"""
         raise NotImplementedError
 
+    @abstractmethod
+    def get_user_by_email(self, email: str) -> UserDTO:
+        raise NotImplementedError
+
 
 class FakeUserRepository(AbstractUserRepository):
     """Подставной репозиторий со пользователями."""
@@ -299,3 +307,10 @@ class FakeUserRepository(AbstractUserRepository):
     def get_users(self) -> list[UserDTO]:
         users = list(self.storage.values())
         return users
+
+    def get_user_by_email(self, email: str) -> UserDTO:
+        for user in self.storage.values():
+            if user.email == email:
+                return user
+
+        raise UserDoesNotExists

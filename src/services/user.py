@@ -10,16 +10,43 @@
 # 3. Создать/Удалить/Обновить пользователя
 # 4. Получить список пользователей и список его счетов с балансами
 
-from dtos import UserType, AuthDTO, UserDTO
+import bcrypt
+from adapters.repository import AbstractUserRepository
+from dtos import (
+    CreateOrUpdateUserDTO,
+    AuthDTO,
+    UserDTO,
+)
 from domain.models import UserId
+from services.payment_system import UserDoesNotExists
 
 
-def authorize(dto: AuthDTO) -> UserType:
-    # TODO:
-    raise NotImplementedError
+class AuthError(Exception):
+    pass
 
 
-def create_user(dto: CreateUserDto):
+class AuthentificationError(AuthError):
+    pass
+
+
+def authentificate(dto: AuthDTO, user_repository: AbstractUserRepository) -> UserDTO:
+    """Аутентифицировать пользователя."""
+    try:
+        user = user_repository.get_user_by_email(dto.email)
+    except UserDoesNotExists:
+        raise AuthentificationError
+
+    # Проверка хеша пароля
+    password_byte = dto.password.encode("utf-8")
+    hashed_byte = user.password_hash.encode("utf-8")
+
+    if not bcrypt.checkpw(password_byte, hashed_byte):
+        raise AuthentificationError
+
+    return user
+
+
+def create_user(dto: CreateOrUpdateUserDTO):
     # TODO:
     raise NotImplementedError
 

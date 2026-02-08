@@ -1,6 +1,10 @@
 from decimal import Decimal
 import hashlib
-from adapters.repository import AbstractAccountRepository, AbstractUserRepository
+from adapters.repository import (
+    AbstractAccountRepository,
+    AbstractUserRepository,
+    UserDoesNotExists,
+)
 from domain.models import (
     AccountId,
     PaymentEntryIsNotUniqueError,
@@ -14,10 +18,6 @@ from domain.messages import HandlePaymentSystemTransaction
 
 
 class SignatureIsNotValid(Exception):
-    pass
-
-
-class UserDoesNotExists(Exception):
     pass
 
 

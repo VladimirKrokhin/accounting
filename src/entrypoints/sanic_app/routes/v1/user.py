@@ -6,7 +6,7 @@ from typing import Any
 
 
 from domain.models import Account, PaymentEntry, UserId
-from dtos import UserDTO
+from dtos import UserDTO, UserDataDTO
 from entrypoints.sanic_app.status_codes import StatusCodes
 from views import (
     get_user_accounts as get_user_accounts_view,
@@ -18,6 +18,17 @@ from views import (
 # Пользователь
 
 user_bp = Blueprint("user", url_prefix="/users")
+
+
+def dictify_user_data_dto(dto: UserDataDTO):
+    ret = {
+        "id": dto.user_id,
+        "email": dto.email,
+        "full_name": dto.full_name,
+        "user_type": str(dto.user_type),
+    }
+
+    return ret
 
 
 # Пользователь и администратор должен иметь следующие возможности:
