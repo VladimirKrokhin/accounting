@@ -1,6 +1,6 @@
 from decimal import Decimal
 import hashlib
-from adapters.repository import AbstractAccountRepository
+from adapters.repository import AbstractAccountRepository, AbstractUserRepository
 from domain.models import (
     AccountId,
     PaymentEntryIsNotUniqueError,
@@ -14,6 +14,10 @@ from domain.messages import HandlePaymentSystemTransaction
 
 
 class SignatureIsNotValid(Exception):
+    pass
+
+
+class UserDoesNotExists(Exception):
     pass
 
 
@@ -54,7 +58,7 @@ def validate_transaction_signature(
 
 
 def add_new_transaction(
-    repository: AbstractAccountRepository,
+    account_repository: AbstractAccountRepository,
     account: Account,
     transaction_id: TransactionId,
     amount: Money,
@@ -63,7 +67,9 @@ def add_new_transaction(
     Добавить новую транзакцию к счету. Не начисляет средства на баланс.
     """
 
-    is_duplicate = repository.is_payment_entry_exists_by_transaction_id(transaction_id)
+    is_duplicate = account_repository.is_payment_entry_exists_by_transaction_id(
+        transaction_id
+    )
 
     if is_duplicate:
         raise PaymentEntryIsNotUniqueError("Транзакция дублируется")
@@ -73,7 +79,7 @@ def add_new_transaction(
         amount=amount,
     )
 
-    acc_id = repository.save_account(account)
+    acc_id = account_repository.save_account(account)
 
     return (acc_id, pe_id)
 
@@ -81,6 +87,7 @@ def add_new_transaction(
 def process_payment_system_transaction(
     message: HandlePaymentSystemTransaction,
     account_repository: AbstractAccountRepository,
+    user_repository: AbstractUserRepository,
     secret: str,
 ) -> tuple[AccountId, PaymentEntryId, bool]:
     """
@@ -112,6 +119,11 @@ def process_payment_system_transaction(
         secret_key=secret,
     )
 
+    # Проверим, существует ли пользователь.
+    is_user_exists = user_repository.is_user_exists(user_id)
+    if not is_user_exists:
+        raise UserDoesNotExists("Пользователь с указанным user_id не существует")
+
     # 2. Проверить существует ли у пользователя такой счет - если нет, его необходимо создать
     is_user_has_account: bool = account_repository.is_user_has_account(
         user_id=user_id, account_id=account_id
@@ -131,7 +143,7 @@ def process_payment_system_transaction(
     # 3. Сохранить транзакцию в базе данных
     account = account_repository.get_account_by_id(account_id=account_id)
     account_id, pe_id = add_new_transaction(
-        repository=account_repository,
+        account_repository=account_repository,
         account=account,
         transaction_id=transaction_id,
         amount=amount,

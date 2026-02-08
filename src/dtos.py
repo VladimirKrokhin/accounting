@@ -17,10 +17,17 @@ class AuthDTO:
 
 @dataclass(frozen=True)
 class UserDTO:
-    user_id: UserId
     email: str
     full_name: str
     user_type: UserType
+
+    user_id: UserId | None = None
+
+
+@dataclass(frozen=True)
+class CreateOrUpdateUserDTO:
+    email: str
+    full_name: str
 
 
 @dataclass(frozen=True)

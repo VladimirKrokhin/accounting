@@ -6,6 +6,7 @@ from sanic.response import json, HTTPResponse
 from entrypoints.sanic_app.status_codes import StatusCodes
 from services.payment_system import (
     SignatureIsNotValid,
+    UserDoesNotExists,
 )
 from domain.messages import HandlePaymentSystemTransaction
 from domain.models import PaymentEntryIsNotUniqueError
@@ -37,6 +38,11 @@ async def handle_transaction(request: Request) -> HTTPResponse:
         return json(
             {"status": "error", "message": "signature is not valid"},
             status=StatusCodes.ERROR_UNPROCESSABLE_ENTITY,
+        )
+    except UserDoesNotExists:
+        return json(
+            {"status": "error", "message": "user does not exists"},
+            status=StatusCodes.ERROR_NOT_FOUND,
         )
     except PaymentEntryIsNotUniqueError:
         return json(

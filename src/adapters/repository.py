@@ -226,6 +226,11 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
 class AbstractUserRepository(metaclass=ABCMeta):
     @abstractmethod
+    def is_user_exists(self, user_id: UserId) -> bool:
+        """Существует ли пользователь?"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_user(self, user_id: UserId) -> UserDTO:
         """Получить пользователя."""
         raise NotImplementedError
@@ -249,19 +254,48 @@ class AbstractUserRepository(metaclass=ABCMeta):
 class FakeUserRepository(AbstractUserRepository):
     """Подставной репозиторий со пользователями."""
 
+    def __init__(
+        self, storage: dict[UserId, UserDTO] | None = None, user_serial: int = 0
+    ) -> None:
+        if storage is None:
+            storage = {}
+
+        self.user_serial = user_serial
+        self.storage = storage
+
+    def is_user_exists(self, user_id: UserId) -> bool:
+        for user in self.storage.values():
+            if user.user_id == user_id:
+                return True
+
+        return False
+
     def get_user(self, user_id: UserId) -> UserDTO:
-        # TODO:
-        raise NotImplementedError
+        if not self.is_user_exists(user_id):
+            raise ValueError("Указанный пользователь не существует")
+
+        user = self.storage[user_id]
+        return user
 
     def save_user(self, user: UserDTO) -> UserId:
-        # TODO:
-        raise NotImplementedError
+        if user.user_id is None:
+            self.user_serial += 1
+            user.user_id = UserId(self.user_serial)
+
+        elif user.user_id not in self.storage:
+            if isinstance(user.user_id, int) and user.user_id > self.user_serial:
+                self.user_serial = user.user_id
+
+        self.storage[user.user_id] = user
+
+        return user.user_id
 
     def delete_user(self, user_id: UserId) -> None:
-        # TODO:
+        if not self.is_user_exists(user_id):
+            raise ValueError("Указанный пользователь не существует")
 
-        raise NotImplementedError
+        self.storage.pop(user_id)
 
     def get_users(self) -> list[UserDTO]:
-        # TODO:
-        raise NotImplementedError
+        users = list(self.storage.values())
+        return users

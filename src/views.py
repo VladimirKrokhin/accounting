@@ -1,6 +1,6 @@
 from dtos import UserDTO
 from domain.models import Account, PaymentEntry, UserId
-from adapters.repository import AbstractAccountRepository
+from adapters.repository import AbstractAccountRepository, AbstractUserRepository
 
 
 def get_user_accounts(
@@ -17,11 +17,11 @@ def get_user_payments(
     return user_payments
 
 
-def get_user_data(user_id: UserId) -> UserDTO:
-    # TODO:
-    raise NotImplementedError
+def get_user_data(user_id: UserId, user_repository: AbstractUserRepository) -> UserDTO:
+    user = user_repository.get_user(user_id)
+    return user
 
 
-def get_users():
-    # TODO:
-    raise NotImplementedError
+def get_users(user_repository: AbstractUserRepository):
+    users = user_repository.get_users()
+    return users

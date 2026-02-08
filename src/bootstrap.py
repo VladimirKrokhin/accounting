@@ -1,17 +1,21 @@
 import inspect
 from typing import Callable
 
-from adapters.repository import AbstractAccountRepository
+from adapters.repository import AbstractAccountRepository, AbstractUserRepository
 from services import handlers
-from domain.messages import Message
 
 
 def bootstrap(
     account_repository: AbstractAccountRepository,
+    user_repository: AbstractUserRepository,
     secret: str,
 ) -> dict[type, Callable]:
 
-    dependencies = {"account_repository": account_repository, "secret": secret}
+    dependencies = {
+        "account_repository": account_repository,
+        "user_repository": user_repository,
+        "secret": secret,
+    }
 
     injected_handlers = {
         message: inject_dependencies(handler, dependencies)
