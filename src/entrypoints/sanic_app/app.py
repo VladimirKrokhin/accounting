@@ -1,6 +1,4 @@
-from sanic import Blueprint, Sanic
-from sanic.response import text
-
+from sanic import Sanic
 from entrypoints.sanic_app.routes import api
 from bootstrap import bootstrap
 from adapters.repository import FakeAccountRepository
@@ -10,7 +8,7 @@ app.blueprint(api)
 
 
 @app.before_server_start
-async def attach_db(app):
+async def attach_dependencies(app):
     # FIXME: замени на использование конфига
     # TODO: Создай метод для загрузки конфига
     secret_key = "gfdmhghif38yrf9ew0jkf32"
@@ -23,8 +21,4 @@ async def attach_db(app):
         secret=secret_key,
     )
     app.ctx.handlers = handlers
-
-
-@app.get("/")
-async def hello_world(request):
-    return text("Hello, world.")
+    app.ctx.account_repository = account_repository

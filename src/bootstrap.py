@@ -9,7 +9,7 @@ from domain.messages import Message
 def bootstrap(
     account_repository: AbstractAccountRepository,
     secret: str,
-) -> dict[type[Message], Callable]:
+) -> dict[type, Callable]:
 
     dependencies = {"account_repository": account_repository, "secret": secret}
 

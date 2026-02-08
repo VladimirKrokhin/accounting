@@ -10,15 +10,16 @@ from adapters.repository import SQLAlchemyAccountRepository
 from adapters.sqlalchemy.models import Base
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def engine():
     # Используем SQLite в памяти для тестов
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    return engine
+    yield engine
+    Base.metadata.drop_all(engine)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def session(engine):
     SessionLocal = sessionmaker(bind=engine)
     session = SessionLocal()
@@ -26,43 +27,85 @@ def session(engine):
     session.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def repository(session):
     return SQLAlchemyAccountRepository(session)
 
 
 def test_repository_can_save_and_retrieve_account(repository, session):
     user_id = UserId(101)
-    # Создаем доменный объект
+    # Создаем счет
     account = Account(
         user_id=user_id,
         balance=Money(Decimal("100.00")),
     )
 
-    # 1. Сохраняем (внутри происходит to_orm и session.merge)
+    # Сохраняем
     account_id = repository.save_account(account)
     session.commit()
 
-    # 2. Получаем обратно
+    # Получаем обратно
     retrieved_account = repository.get_account_by_id(account_id)
 
     assert retrieved_account.id_ == account_id
     assert retrieved_account.user_id == user_id
     assert retrieved_account.balance == Decimal("100.00")
 
+    # Проверяем, отражается ли у пользователя
+    user_accounts = repository.get_user_accounts(user_id)
+    assert len(user_accounts) == 1
+
+    retrieved_user_account = user_accounts[0]
+    assert retrieved_user_account.id_ == account_id
+    assert retrieved_user_account.user_id == user_id
+    assert retrieved_user_account.balance == Decimal("100.00")
+
 
 def test_repository_can_save_account_with_payments(repository, session):
-    account = Account(user_id=UserId(1), balance=Money(Decimal("0.00")))
-    # Сохраняем и ОБЯЗАТЕЛЬНО присваиваем полученный ID обратно в домен
-    account.id_ = repository.save_account(account)
-    session.commit()
+    user_id = UserId(1)
+    initial_balance = Money(Decimal("0.00"))
+    account = Account(user_id=user_id, balance=initial_balance)
+    # Сохраняем
+    account_id = repository.save_account(account)
+    # session.commit()
 
-    # Теперь при добавлении платежа entry.account_id будет равен 1, а не None
     tx_id = TransactionId(uuid4())
-    account.add_payment_entry(transaction_id=tx_id, amount=Money(Decimal("50.00")))
+    transaction_amount = Money(Decimal("50.00"))
+    pe_id = account.add_payment_entry(transaction_id=tx_id, amount=transaction_amount)
 
     repository.save_account(account)
-    session.commit()
+    # session.commit()
+
+    # Получаем обратно
+    retrieved_account = repository.get_account_by_id(account_id)
+    assert retrieved_account.user_id == user_id
+    assert retrieved_account.balance == Money(Decimal("0.00"))
+    payment = tuple(retrieved_account.payments)[0]
+    assert payment.amount == transaction_amount
+    assert payment.transaction_id == tx_id
+    assert payment.id_ == pe_id
+    assert payment.account_id == account_id
+
+    # Проверяем, отражается ли у пользователя
+    user_accounts = repository.get_user_accounts(user_id)
+    assert len(user_accounts) == 1
+
+    retrieved_user_account = user_accounts[0]
+    assert retrieved_user_account.id_ == account_id
+    assert retrieved_user_account.user_id == user_id
+    assert retrieved_user_account.balance == Decimal("0.00")
+    user_account_payment = tuple(retrieved_account.payments)[0]
+    assert user_account_payment.amount == transaction_amount
+    assert user_account_payment.transaction_id == tx_id
+    assert user_account_payment.id_ == pe_id
+    assert user_account_payment.account_id == account_id
+
+    user_payments = repository.get_user_payments(user_id)
+    user_payment = user_payments[0]
+    assert user_payment.amount == transaction_amount
+    assert user_payment.transaction_id == tx_id
+    assert user_payment.id_ == pe_id
+    assert user_payment.account_id == account_id
 
 
 def test_is_payment_entry_exists_by_transaction_id(repository, session):
@@ -96,7 +139,7 @@ def test_save_account_updates_existing_balance(repository, session):
     acc_id = repository.save_account(account)
     session.commit()
 
-    # Изменяем баланс в домене
+    # Изменяем баланс
     account.id_ = acc_id
     account.balance = Money(Decimal("250.00"))
 

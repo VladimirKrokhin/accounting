@@ -2,12 +2,14 @@ from abc import ABCMeta, abstractmethod
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
-from domain.models import Account, AccountId, UserId, TransactionId
+from domain.models import Account, AccountId, PaymentEntry, UserId, TransactionId
 from adapters.sqlalchemy.mappers import (
     AccountMapper,
+    PaymentEntryMapper,
     SQLAlchemyAccount,
     SQLAlchemyPaymentEntry,
 )
+from dtos import UserDTO
 
 
 class AbstractAccountRepository(metaclass=ABCMeta):
@@ -48,6 +50,16 @@ class AbstractAccountRepository(metaclass=ABCMeta):
         """
         Получить счет по id.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_user_accounts(self, user_id: UserId) -> list[Account]:
+        """Получить список счетов пользователя."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
+        """Получить список платежей пользователя."""
         raise NotImplementedError
 
 
@@ -105,6 +117,24 @@ class FakeAccountRepository(AbstractAccountRepository):
 
         return self.storage[account_id]
 
+    def get_user_accounts(self, user_id: UserId) -> list[Account]:
+        user_accounts = []
+
+        for account in self.storage.values():
+            if account.user_id == user_id:
+                user_accounts.append(account)
+
+        return user_accounts
+
+    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
+        user_accounts = self.get_user_accounts(user_id)
+        user_payments = []
+
+        for account in user_accounts:
+            user_payments.extend(account.payments)
+
+        return user_payments
+
 
 class SQLAlchemyAccountRepository(AbstractAccountRepository):
     """
@@ -134,28 +164,104 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
     def save_account(self, account: Account) -> AccountId:
         orm_account = AccountMapper.to_orm(account)
+        is_new_account = orm_account.id is None
 
-        # Если аккаунт уже существует в базе
-        if orm_account.id is not None:
-            merged = self._session.merge(orm_account)
+        if not is_new_account:
+            # Обновляем существующую запись
+            orm_account = self._session.merge(orm_account)
         else:
+            # Добавляем новую запись
             self._session.add(orm_account)
-            merged = orm_account
 
+        # Синхронизируем с БД, чтобы получить сгенерированный ID (если это был INSERT)
         self._session.flush()
-        return AccountId(merged.id)
+
+        # Теперь id гарантированно существует
+        account_id = AccountId(orm_account.id)
+
+        # Если аккаунт был новый, обновляем доменную модель и её связи
+        if is_new_account:
+            account.id_ = account_id
+            for payment in account.payments:
+                payment.account_id = account_id
+
+        return account_id
 
     def is_account_exists(self, account_id: AccountId) -> bool:
-        if account_id is None:
-            return False
         stmt = select(exists().where(SQLAlchemyAccount.id == account_id))
         return self._session.scalar(stmt) or False
 
     def get_account_by_id(self, account_id: AccountId) -> Account:
-        # Мы используем get(), так как это наиболее эффективный способ поиска по PK
         orm_account = self._session.get(SQLAlchemyAccount, account_id)
 
         if orm_account is None:
             raise ValueError(f"Счет с ID {account_id} не найден")
 
         return AccountMapper.to_domain(orm_account)
+
+    def get_user_accounts(self, user_id: UserId) -> list[Account]:
+        stmt = select(SQLAlchemyAccount).where(SQLAlchemyAccount.user_id == user_id)
+
+        orm_accounts = self._session.scalars(stmt).all()
+        accounts = [
+            AccountMapper.to_domain(orm_account) for orm_account in orm_accounts
+        ]
+
+        return accounts
+
+    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
+        stmt = (
+            select(SQLAlchemyPaymentEntry)
+            .join(SQLAlchemyAccount)
+            .where(SQLAlchemyAccount.user_id == user_id)
+        )
+
+        orm_payments = self._session.scalars(stmt).all()
+        payments = [
+            PaymentEntryMapper.to_domain(orm_payment) for orm_payment in orm_payments
+        ]
+
+        return payments
+
+
+class AbstractUserRepository(metaclass=ABCMeta):
+    @abstractmethod
+    def get_user(self, user_id: UserId) -> UserDTO:
+        """Получить пользователя."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_user(self, user: UserDTO) -> UserId:
+        """Сохранить пользователя"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_user(self, user_id: UserId) -> None:
+        """Удалить пользователя"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_users(self) -> list[UserDTO]:
+        """Получить список пользователей"""
+        raise NotImplementedError
+
+
+class FakeUserRepository(AbstractUserRepository):
+    """Подставной репозиторий со пользователями."""
+
+    def get_user(self, user_id: UserId) -> UserDTO:
+        # TODO:
+        raise NotImplementedError
+
+    def save_user(self, user: UserDTO) -> UserId:
+        # TODO:
+        raise NotImplementedError
+
+    def delete_user(self, user_id: UserId) -> None:
+        # TODO:
+
+        raise NotImplementedError
+
+    def get_users(self) -> list[UserDTO]:
+        # TODO:
+        raise NotImplementedError

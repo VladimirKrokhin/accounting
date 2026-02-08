@@ -1,6 +1,5 @@
 from decimal import Decimal
-from uuid import UUID, uuid4
-import pytest
+from uuid import UUID
 
 from domain.models import Account, AccountId, Money, TransactionId, UserId
 from domain.messages import HandlePaymentSystemTransaction

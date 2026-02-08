@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from decimal import Decimal
 import hashlib
 from adapters.repository import AbstractAccountRepository
 from domain.models import (
@@ -120,7 +120,7 @@ def process_payment_system_transaction(
     if not is_user_has_account:
         account = Account(
             id_=account_id,
-            balance=Money(0),
+            balance=Money(Decimal(0)),
             user_id=user_id,
         )
         account_id = account_repository.save_account(account)
