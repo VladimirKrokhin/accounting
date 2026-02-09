@@ -1,7 +1,7 @@
 from sanic import Sanic
 from domain.models import UserId
 from dtos import UserDTO, UserType
-from entrypoints.sanic_app.routes import api
+from entrypoints.sanic_app.api import api
 from bootstrap import bootstrap
 from adapters.repository import FakeAccountRepository, FakeUserRepository
 

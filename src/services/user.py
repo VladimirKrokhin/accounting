@@ -16,34 +16,10 @@ from dtos import (
     CreateOrUpdateUserDTO,
     AuthDTO,
     UserDTO,
+    UserType,
 )
 from domain.models import UserId
 from services.payment_system import UserDoesNotExists
-
-
-class AuthError(Exception):
-    pass
-
-
-class AuthentificationError(AuthError):
-    pass
-
-
-def authentificate(dto: AuthDTO, user_repository: AbstractUserRepository) -> UserDTO:
-    """Аутентифицировать пользователя."""
-    try:
-        user = user_repository.get_user_by_email(dto.email)
-    except UserDoesNotExists:
-        raise AuthentificationError
-
-    # Проверка хеша пароля
-    password_byte = dto.password.encode("utf-8")
-    hashed_byte = user.password_hash.encode("utf-8")
-
-    if not bcrypt.checkpw(password_byte, hashed_byte):
-        raise AuthentificationError
-
-    return user
 
 
 def create_user(dto: CreateOrUpdateUserDTO):

@@ -1,6 +1,5 @@
 from sanic import Blueprint
-from entrypoints.sanic_app.routes.v1 import api_v1
-
+from entrypoints.sanic_app.api.v1.routes import api_v1
 
 __all__ = ["api"]
 

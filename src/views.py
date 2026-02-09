@@ -1,18 +1,36 @@
 from dtos import UserDTO
 from domain.models import Account, PaymentEntry, UserId
-from adapters.repository import AbstractAccountRepository, AbstractUserRepository
+from adapters.repository import (
+    AbstractAccountRepository,
+    AbstractUserRepository,
+    UserDoesNotExists,
+)
 
 
 def get_user_accounts(
-    user_id: UserId, account_repository: AbstractAccountRepository
+    user_id: UserId,
+    account_repository: AbstractAccountRepository,
+    user_repository: AbstractUserRepository,
 ) -> list[Account]:
+    is_user_exists = user_repository.is_user_exists(user_id)
+
+    if not is_user_exists:
+        raise UserDoesNotExists
+
     user_accounts = account_repository.get_user_accounts(user_id)
     return user_accounts
 
 
 def get_user_payments(
-    user_id: UserId, account_repository: AbstractAccountRepository
+    user_id: UserId,
+    account_repository: AbstractAccountRepository,
+    user_repository: AbstractUserRepository,
 ) -> list[PaymentEntry]:
+    is_user_exists = user_repository.is_user_exists(user_id)
+
+    if not is_user_exists:
+        raise UserDoesNotExists
+
     user_payments = account_repository.get_user_payments(user_id)
     return user_payments
 
