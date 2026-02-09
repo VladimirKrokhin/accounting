@@ -36,22 +36,43 @@ class AuthorizationError(AuthError):
 def is_user_type_in(
     user_id: UserId, user_types: list[UserType], user_repository: AbstractUserRepository
 ):
+    """Тип пользователя находится в списке типов?"""
     user = user_repository.get_user(user_id)
     return user.user_type in user_types
 
 
+def generate_password_hash(password: str):
+    salt = bcrypt.gensalt()
+    hash = bcrypt.hashpw(password.encode(), salt)
+
+    return hash.decode()
+
+
+def check_password_by_hash(password: str, hashed_password: str) -> bool:
+    """Проверить пароль по хешу."""
+    password_byte = password.encode("utf-8")
+    hashed_byte = hashed_password.encode("utf-8")
+
+    res = bcrypt.checkpw(password_byte, hashed_byte)
+
+    return res
+
+
 def authentificate(dto: AuthDTO, user_repository: AbstractUserRepository) -> UserDTO:
     """Аутентифицировать пользователя."""
-    try:
-        user = user_repository.get_user_by_email(dto.email)
-    except UserDoesNotExists:
+    users = user_repository.get_users_by_email(dto.email)
+
+    if len(users) != 1:
         raise AuthentificationError
 
-    # Проверка хеша пароля
-    password_byte = dto.password.encode("utf-8")
-    hashed_byte = user.password_hash.encode("utf-8")
+    user = users[0]
 
-    if not bcrypt.checkpw(password_byte, hashed_byte):
+    # Проверка хеша пароля
+    is_password_valid = check_password_by_hash(
+        password=dto.password, hashed_password=user.password_hash
+    )
+
+    if not is_password_valid:
         raise AuthentificationError
 
     return user

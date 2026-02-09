@@ -235,6 +235,11 @@ class AbstractUserRepository(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
+    def is_user_exists_by_email(self, email: str) -> bool:
+        """Существует ли пользователь с указанной почтой?"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_user(self, user_id: UserId) -> UserDTO:
         """Получить пользователя."""
         raise NotImplementedError
@@ -255,7 +260,7 @@ class AbstractUserRepository(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def get_user_by_email(self, email: str) -> UserDTO:
+    def get_users_by_email(self, email: str) -> list[UserDTO]:
         raise NotImplementedError
 
 
@@ -274,6 +279,13 @@ class FakeUserRepository(AbstractUserRepository):
     def is_user_exists(self, user_id: UserId) -> bool:
         for user in self.storage.values():
             if user.user_id == user_id:
+                return True
+
+        return False
+
+    def is_user_exists_by_email(self, email: str) -> bool:
+        for user in self.storage.values():
+            if user.email == email:
                 return True
 
         return False
@@ -300,7 +312,7 @@ class FakeUserRepository(AbstractUserRepository):
 
     def delete_user(self, user_id: UserId) -> None:
         if not self.is_user_exists(user_id):
-            raise ValueError("Указанный пользователь не существует")
+            raise UserDoesNotExists("Указанный пользователь не существует")
 
         self.storage.pop(user_id)
 
@@ -308,9 +320,10 @@ class FakeUserRepository(AbstractUserRepository):
         users = list(self.storage.values())
         return users
 
-    def get_user_by_email(self, email: str) -> UserDTO:
+    def get_users_by_email(self, email: str) -> list[UserDTO]:
+        users = []
         for user in self.storage.values():
             if user.email == email:
-                return user
+                users.append(user)
 
-        raise UserDoesNotExists
+        return users

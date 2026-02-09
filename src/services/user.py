@@ -10,29 +10,71 @@
 # 3. Создать/Удалить/Обновить пользователя
 # 4. Получить список пользователей и список его счетов с балансами
 
-import bcrypt
-from adapters.repository import AbstractUserRepository
+from adapters.repository import AbstractUserRepository, UserDoesNotExists
+from domain.messages import CreateUser, DeleteUser, UpdateUser
 from dtos import (
-    CreateOrUpdateUserDTO,
-    AuthDTO,
     UserDTO,
     UserType,
 )
 from domain.models import UserId
-from services.payment_system import UserDoesNotExists
+from services.auth import generate_password_hash
 
 
-def create_user(dto: CreateOrUpdateUserDTO):
-    # TODO:
-    raise NotImplementedError
+class UserIsAlreadyExistsError(Exception):
+    pass
 
 
-def update_user(dto: UserDTO):
-    # TODO:
-    raise NotImplementedError
+def create_user(message: CreateUser, user_repository: AbstractUserRepository) -> UserId:
+    is_user_exists = user_repository.is_user_exists_by_email(message.email)
+
+    if is_user_exists:
+        raise UserIsAlreadyExistsError("Пользователь с указанным email уже существует")
+
+    password_hash = generate_password_hash(message.password)
+
+    user = UserDTO(
+        email=message.email,
+        full_name=message.email,
+        password_hash=password_hash,
+        user_type=UserType.USER,
+    )
+    user_id = user_repository.save_user(user)
+
+    return user_id
 
 
-def delete_user(user_id: UserId):
-    # TODO:
+def update_user(message: UpdateUser, user_repository: AbstractUserRepository) -> UserId:
+    is_user_exists = user_repository.is_user_exists(message.user_id)
 
-    raise NotImplementedError
+    if not is_user_exists:
+        raise UserDoesNotExists("Пользователь с указанным user_id не существует")
+
+    users_with_exact_email = user_repository.get_users_by_email(message.email)
+    for user in users_with_exact_email:
+        if user.user_id != message.user_id:
+            raise UserIsAlreadyExistsError(
+                "Существует другой пользователь с указанным email"
+            )
+
+    password_hash = generate_password_hash(message.password)
+
+    user = UserDTO(
+        user_id=message.user_id,
+        email=message.email,
+        full_name=message.full_name,
+        password_hash=password_hash,
+        user_type=UserType.USER,
+    )
+    user_id = user_repository.save_user(user)
+
+    return user_id
+
+
+def delete_user(message: DeleteUser, user_repository: AbstractUserRepository) -> None:
+    user_id = message.user_id
+    is_user_exists = user_repository.is_user_exists(user_id)
+
+    if not is_user_exists:
+        raise UserDoesNotExists("Пользователь с указанным user_id не существует")
+
+    user_repository.delete_user(user_id)

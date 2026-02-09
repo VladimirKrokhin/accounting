@@ -4,6 +4,7 @@ from enum import IntEnum
 class StatusCodes(IntEnum):
     SUCCESS = 200
     SUCCESS_CREATED = 201
+    SUCCESS_NO_CONTENT = 204
     ERROR = 400
     ERROR_UNAUTHORIZED = 401
     ERROR_FORBIDDEN = 403

@@ -18,17 +18,27 @@ async def attach_dependencies(app):
     # TODO: создай метод инициализации приложения
     account_repository = FakeAccountRepository()
 
-    user_id = UserId(1)
+    test_user = UserDTO(
+        user_id=UserId(1),
+        email="test@user.example",
+        password_hash="$2b$12$7T/BsPgD4IrwlvYFEQb6Wug27mxMQ2tBKEiTQpwVk8i6YJQvKCMly",  # test_user
+        full_name="Test User",
+        user_type=UserType.USER,
+    )
+
+    test_admin = UserDTO(
+        user_id=UserId(2),
+        email="test@admin.example",
+        password_hash="$2b$12$HQD9l658BQ4EmJRIMyw4DOoIWWfvvi3JrZy0CDFH49pgGWu4wrHPK",  # test_admin
+        full_name="Test Admin",
+        user_type=UserType.ADMIN,
+    )
+
     users = {
-        user_id: UserDTO(
-            user_id=user_id,
-            email="test@user.example",
-            password_hash="$2b$12$7T/BsPgD4IrwlvYFEQb6Wug27mxMQ2tBKEiTQpwVk8i6YJQvKCMly",  # test_user
-            full_name="Test User",
-            user_type=UserType.USER,
-        )
+        test_user.user_id: test_user,
+        test_admin.user_id: test_admin,
     }
-    user_repository = FakeUserRepository(users)
+    user_repository = FakeUserRepository(users, user_serial=2)
 
     handlers = bootstrap(
         account_repository=account_repository,

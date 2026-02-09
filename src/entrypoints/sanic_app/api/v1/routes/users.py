@@ -7,14 +7,16 @@ from sanic.response import HTTPResponse, json
 
 
 from adapters.repository import UserDoesNotExists
+from domain.messages import CreateUser, DeleteUser, UpdateUser
 from domain.models import Account, PaymentEntry, UserId
-from dtos import UserDTO, UserDataDTO
+from dtos import CreateOrUpdateUserDTO, UserDTO, UserDataDTO
 from entrypoints.sanic_app.api.v1.middlewares.auth import (
     is_admin,
     is_user_or_admin,
     protected,
 )
 from entrypoints.sanic_app.status_codes import StatusCodes
+from services.user import UserIsAlreadyExistsError
 from views import (
     get_user_accounts as get_user_accounts_view,
     get_user_payments as get_user_payments_view,
@@ -24,10 +26,16 @@ from views import (
 
 
 def dictify_payment(payment: PaymentEntry) -> dict[str, Any]:
+    payment_id = payment.id_
+    account_id = payment.account_id
+
+    if payment_id is None or account_id is None:
+        raise ValueError
+
     res = {
-        "id": str(payment.id_),
+        "id": str(payment_id),
         "transaction_id": str(payment.transaction_id),
-        "account_id": int(payment.account_id),
+        "account_id": int(account_id),
         "amount": payment.amount,
         "is_accrued": payment.is_accrued,
     }
@@ -36,8 +44,13 @@ def dictify_payment(payment: PaymentEntry) -> dict[str, Any]:
 
 
 def dictify_account(account: Account) -> dict[str, Any]:
+    account_id = account.id_
+
+    if account_id is None:
+        raise ValueError
+
     res = {
-        "id": int(account.id_),
+        "id": int(account_id),
         "user_id": int(account.user_id),
         "balance": account.balance,
     }
@@ -138,17 +151,107 @@ async def get_current_user_payments(request: Request) -> HTTPResponse:
 # Создать/Удалить/Обновить пользователя
 @admin_bp.post("/")
 async def create_user(request: Request) -> HTTPResponse:
-    raise NotImplementedError
+    app = Sanic.get_app("accounts")
+    create_user_data = request.json
+
+    # FIXME: делай валидацию при помощи Pydantic
+    create_user_dto = CreateOrUpdateUserDTO(
+        email=create_user_data["email"],
+        full_name=create_user_data["full_name"],
+        password=create_user_data["password"],
+    )
+
+    create_user = CreateUser(
+        email=create_user_dto.email,
+        full_name=create_user_dto.full_name,
+        password=create_user_dto.password,
+    )
+
+    handler = app.ctx.handlers[CreateUser]
+
+    try:
+        user_id = handler(create_user)
+    except UserIsAlreadyExistsError:
+        return json(
+            {"status": "error", "message": "user with email is already exists"},
+            status=StatusCodes.ERROR_CONFLICT,
+        )
+
+    return json(
+        {
+            "status": "success",
+            "message": "user created",
+            "user_id": user_id,
+        },
+        status=StatusCodes.SUCCESS_CREATED,
+    )
 
 
 @admin_bp.delete("/<user_id:int>")
 async def delete_user(request: Request, user_id: int) -> HTTPResponse:
-    raise NotImplementedError
+    app = Sanic.get_app("accounts")
+
+    delete_user = DeleteUser(user_id=user_id)
+    handler = app.ctx.handlers[DeleteUser]
+
+    try:
+        handler(delete_user)
+    except UserDoesNotExists:
+        return json(
+            {"status": "error", "message": "user does not exists"},
+            status=StatusCodes.ERROR_NOT_FOUND,
+        )
+
+    return json(
+        {
+            "status": "success",
+            "message": "user deleted",
+            "user_id": user_id,
+        },
+        status=StatusCodes.SUCCESS_NO_CONTENT,
+    )
 
 
-@admin_bp.patch("/<user_id:int>")
+@admin_bp.post("/<user_id:int>")
 async def update_user(request: Request, user_id: int) -> HTTPResponse:
-    raise NotImplementedError
+    app = Sanic.get_app("accounts")
+    update_info = request.json
+    update_user_dto = CreateOrUpdateUserDTO(
+        email=update_info["email"],
+        full_name=update_info["full_name"],
+        password=update_info["password"],
+    )
+    update_user = UpdateUser(
+        user_id=user_id,
+        email=update_user_dto.email,
+        full_name=update_user_dto.full_name,
+        password=update_user_dto.password,
+    )
+
+    handler = app.ctx.handlers[UpdateUser]
+
+    try:
+        user_id = handler(update_user)
+    except UserIsAlreadyExistsError:
+        return json(
+            {"status": "error", "message": "user with email is already exists"},
+            status=StatusCodes.ERROR_CONFLICT,
+        )
+
+    except UserDoesNotExists:
+        return json(
+            {"status": "error", "message": "user does not exists"},
+            status=StatusCodes.ERROR_NOT_FOUND,
+        )
+
+    return json(
+        {
+            "status": "success",
+            "message": "user updated",
+            "user_id": user_id,
+        },
+        status=StatusCodes.SUCCESS_NO_CONTENT,
+    )
 
 
 # Получить список пользователей...
@@ -181,9 +284,12 @@ async def get_users(request: Request) -> HTTPResponse:
 async def get_user_accounts(request: Request, user_id: int) -> HTTPResponse:
     app = Sanic.get_app("accounts")
     account_repository = app.ctx.account_repository
+    user_repository = app.ctx.user_repository
 
     user_accounts = get_user_accounts_view(
-        user_id=UserId(user_id), account_repository=account_repository
+        user_id=UserId(user_id),
+        account_repository=account_repository,
+        user_repository=user_repository,
     )
     json_body = [dictify_account(account) for account in user_accounts]
     response = json(body=json_body, status=StatusCodes.SUCCESS)

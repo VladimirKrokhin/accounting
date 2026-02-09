@@ -24,7 +24,7 @@ class AuthDTO:
     password: str
 
 
-@dataclass(frozen=True)
+@dataclass
 class UserDTO:
     email: str
     full_name: str
@@ -38,6 +38,7 @@ class UserDTO:
 class CreateOrUpdateUserDTO:
     email: str
     full_name: str
+    password: str
 
 
 @dataclass(frozen=True)

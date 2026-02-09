@@ -10,10 +10,36 @@ class Message(metaclass=ABCMeta):
 
 @dataclass(frozen=True)
 class HandlePaymentSystemTransaction(Message):
-    """DTO для обработки транзакции от платежной системы."""
+    """Обработать транзакцию от платежной системы."""
 
     transaction_id: TransactionId
     user_id: UserId
     account_id: AccountId
     amount: Money
     signature: str
+
+
+@dataclass(frozen=True)
+class CreateUser(Message):
+    """Создать пользователя."""
+
+    email: str
+    full_name: str
+    password: str
+
+
+@dataclass(frozen=True)
+class UpdateUser(Message):
+    """Обновить пользователя."""
+
+    user_id: UserId
+    email: str
+    full_name: str
+    password: str
+
+
+@dataclass(frozen=True)
+class DeleteUser(Message):
+    """Удалить пользователя."""
+
+    user_id: id
