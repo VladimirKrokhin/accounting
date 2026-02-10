@@ -1,15 +1,21 @@
-from adapters.sqlalchemy.models import (
-    Account as SQLAlchemyAccount,
-    PaymentEntry as SQLAlchemyPaymentEntry,
-)
-from domain.models import (
+from dtos import UserDTO, UserType
+from domain.types import (
     Money,
     AccountId,
     PaymentEntryId,
     TransactionId,
     UserId,
+)
+from domain.models import (
     Account,
     PaymentEntry,
+)
+from adapters.sqlalchemy.models import (
+    Account as SQLAlchemyAccount,
+    AccountsUser,
+    Administrator,
+    PaymentEntry as SQLAlchemyPaymentEntry,
+    User,
 )
 
 
@@ -67,3 +73,44 @@ class AccountMapper:
         )
 
         return orm_model
+
+
+class UserMapper:
+    @staticmethod
+    def to_dto(orm_user: User) -> UserDTO:
+        return UserDTO(
+            user_id=UserId(orm_user.id),
+            email=orm_user.email_address,
+            full_name=orm_user.full_name or "",
+            user_type=UserType(orm_user.type),
+            password_hash=orm_user.password_hash,
+        )
+
+    @staticmethod
+    def to_orm(user_dto: UserDTO) -> User:
+        model_map = {
+            "user": AccountsUser,
+            "admin": Administrator,
+        }
+
+        model_class = model_map.get(user_dto.user_type, User)
+
+        match user_dto.user_type:
+            case UserType.USER:
+                model_class = AccountsUser(
+                    id=user_dto.user_id,
+                    full_name=user_dto.full_name,
+                    email_address=user_dto.email,
+                    password_hash=user_dto.password_hash,
+                )
+            case UserType.ADMIN:
+                model_class = Administrator(
+                    id=user_dto.user_id,
+                    full_name=user_dto.full_name,
+                    email_address=user_dto.email,
+                    password_hash=user_dto.password_hash,
+                )
+            case _:
+                raise ValueError
+
+        return model_class

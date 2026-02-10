@@ -1,28 +1,26 @@
 import inspect
-from typing import Callable
 
-from adapters.repository import AbstractAccountRepository, AbstractUserRepository
-from services import handlers
+from service_layer import unit_of_work
+from service_layer.handlers import message_handlers
+from service_layer.message_bus import MessageBus
 
 
 def bootstrap(
-    account_repository: AbstractAccountRepository,
-    user_repository: AbstractUserRepository,
-    secret: str,
-) -> dict[type, Callable]:
+    uow: unit_of_work.AbstractUnitOfWork,
+) -> MessageBus:
 
     dependencies = {
-        "account_repository": account_repository,
-        "user_repository": user_repository,
-        "secret": secret,
+        "uow": uow,
     }
 
     injected_handlers = {
         message: inject_dependencies(handler, dependencies)
-        for message, handler in handlers.items()
+        for message, handler in message_handlers.items()
     }
 
-    return injected_handlers
+    mb = MessageBus(message_handlers=injected_handlers, uow=uow)
+
+    return mb
 
 
 def inject_dependencies(handler, dependencies):

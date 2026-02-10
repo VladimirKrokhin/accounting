@@ -1,19 +1,26 @@
 from sanic import Sanic
-from domain.models import UserId
-from dtos import UserDTO, UserType
-from entrypoints.sanic_app.api import api
+from config import load_config
+
 from bootstrap import bootstrap
+from dtos import UserDTO, UserType
+from domain.models import UserId
 from adapters.repository import FakeAccountRepository, FakeUserRepository
+from service_layer.unit_of_work import FakeUnitOfWork
+from entrypoints.sanic_app.api import api
+
+__all__ = ["app"]
 
 app = Sanic("accounts")
 app.blueprint(api)
 
 
 @app.before_server_start
-async def attach_dependencies(app):
+async def bootstrap_app(app: Sanic):
     # FIXME: замени на использование конфига
     # TODO: Создай метод для загрузки конфига
-    secret_key = "gfdmhghif38yrf9ew0jkf32"
+    app_config = load_config()
+    app.update_config(app_config)
+
     # FIXME: замени на SQLAlchemyRepository
     # TODO: создай метод инициализации приложения
     account_repository = FakeAccountRepository()
@@ -34,17 +41,14 @@ async def attach_dependencies(app):
         user_type=UserType.ADMIN,
     )
 
-    users = {
+    users: dict[UserId, UserDTO] = {
         test_user.user_id: test_user,
         test_admin.user_id: test_admin,
-    }
-    user_repository = FakeUserRepository(users, user_serial=2)
+    }  # pyright: ignore[reportAssignmentType]
 
-    handlers = bootstrap(
-        account_repository=account_repository,
-        user_repository=user_repository,
-        secret=secret_key,
-    )
-    app.ctx.handlers = handlers
-    app.ctx.account_repository = account_repository
-    app.ctx.user_repository = user_repository
+    user_repository = FakeUserRepository(users, user_serial=2)
+    unit_of_work = FakeUnitOfWork(accounts=account_repository, users=user_repository)
+
+    message_bus = bootstrap(unit_of_work)
+
+    app.ctx.message_bus = message_bus

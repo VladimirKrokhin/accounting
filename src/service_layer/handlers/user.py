@@ -10,21 +10,20 @@
 # 3. Создать/Удалить/Обновить пользователя
 # 4. Получить список пользователей и список его счетов с балансами
 
-from adapters.repository import AbstractUserRepository, UserDoesNotExists
-from domain.messages import CreateUser, DeleteUser, UpdateUser
 from dtos import (
     UserDTO,
     UserType,
 )
-from domain.models import UserId
-from services.auth import generate_password_hash
+
+from domain.types import UserId
+from domain.messages import CreateUser, DeleteUser, UpdateUser
+from domain.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
+from adapters.auth import generate_password_hash
+from service_layer.unit_of_work import AbstractUnitOfWork
 
 
-class UserIsAlreadyExistsError(Exception):
-    pass
-
-
-def create_user(message: CreateUser, user_repository: AbstractUserRepository) -> UserId:
+def create_user(message: CreateUser, uow: AbstractUnitOfWork) -> UserId:
+    user_repository = uow.users
     is_user_exists = user_repository.is_user_exists_by_email(message.email)
 
     if is_user_exists:
@@ -34,7 +33,7 @@ def create_user(message: CreateUser, user_repository: AbstractUserRepository) ->
 
     user = UserDTO(
         email=message.email,
-        full_name=message.email,
+        full_name=message.full_name,
         password_hash=password_hash,
         user_type=UserType.USER,
     )
@@ -43,7 +42,8 @@ def create_user(message: CreateUser, user_repository: AbstractUserRepository) ->
     return user_id
 
 
-def update_user(message: UpdateUser, user_repository: AbstractUserRepository) -> UserId:
+def update_user(message: UpdateUser, uow: AbstractUnitOfWork) -> UserId:
+    user_repository = uow.users
     is_user_exists = user_repository.is_user_exists(message.user_id)
 
     if not is_user_exists:
@@ -70,7 +70,8 @@ def update_user(message: UpdateUser, user_repository: AbstractUserRepository) ->
     return user_id
 
 
-def delete_user(message: DeleteUser, user_repository: AbstractUserRepository) -> None:
+def delete_user(message: DeleteUser, uow: AbstractUnitOfWork) -> None:
+    user_repository = uow.users
     user_id = message.user_id
     is_user_exists = user_repository.is_user_exists(user_id)
 

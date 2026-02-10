@@ -1,18 +1,19 @@
-import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import NewType
 
-AccountId = NewType(name="AccountId", tp=int)
-UserId = NewType(name="UserId", tp=int)
-PaymentEntryId = NewType(name="PaymentEntryId", tp=uuid.UUID)
-TransactionId = NewType(name="TransactionId", tp=uuid.UUID)
-
-Money = NewType(name="Money", tp=Decimal)
-
-
-def next_payment_entry_id():
-    return PaymentEntryId(uuid.uuid4())
+from domain.exceptions import (
+    PaymentEntryAlreadyAccrued,
+    PaymentEntryDoesNotExistsError,
+    PaymentEntryIsNotUniqueError,
+)
+from domain.types import (
+    AccountId,
+    Money,
+    PaymentEntryId,
+    TransactionId,
+    UserId,
+    next_payment_entry_id,
+)
 
 
 @dataclass
@@ -33,30 +34,6 @@ class PaymentEntry:
             return False
 
         return self.transaction_id == value.transaction_id
-
-
-class PaymentEntryError(Exception):
-    """Базовый класс для исключений и ошибок, связанных с платежом."""
-
-    pass
-
-
-class PaymentEntryIsNotUniqueError(PaymentEntryError):
-    """Платеж дублируется."""
-
-    pass
-
-
-class PaymentEntryDoesNotExistsError(PaymentEntryError):
-    """Платеж не найден."""
-
-    pass
-
-
-class PaymentEntryAlreadyAccrued(PaymentEntryError):
-    """Платеж уже начислен."""
-
-    pass
 
 
 @dataclass

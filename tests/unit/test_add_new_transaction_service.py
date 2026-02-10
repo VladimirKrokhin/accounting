@@ -1,8 +1,9 @@
 from decimal import Decimal
 from uuid import uuid4
 import pytest
+
+from domain.exceptions import PaymentEntryIsNotUniqueError
 from domain.models import (
-    PaymentEntryIsNotUniqueError,
     TransactionId,
     Account,
     Money,
@@ -10,16 +11,16 @@ from domain.models import (
     AccountId,
 )
 from adapters.repository import FakeAccountRepository
-from services.payment_system import add_new_transaction
+from service_layer.handlers.payment_system import add_new_transaction
 
 
 def test_add_new_transaction_success():
-    repository = FakeAccountRepository()
+    account_repository = FakeAccountRepository()
     account = Account(id_=AccountId(1), user_id=UserId(1), balance=Money(Decimal(1)))
     tr_id = TransactionId(uuid4())
 
     pe_id = add_new_transaction(
-        repository=repository,
+        account_repository=account_repository,
         account=account,
         transaction_id=tr_id,
         amount=Money(Decimal(100)),
@@ -38,13 +39,13 @@ def test_add_new_transaction_success():
 
 
 def test_add_new_transaction_duplicate():
-    repository = FakeAccountRepository()
+    account_repository = FakeAccountRepository()
     account1 = Account(id_=AccountId(1), user_id=UserId(1), balance=Money(Decimal(1)))
     account2 = Account(id_=AccountId(2), user_id=UserId(1), balance=Money(Decimal(1)))
     tr_id = TransactionId(uuid4())
 
     add_new_transaction(
-        repository=repository,
+        account_repository=account_repository,
         account=account1,
         transaction_id=tr_id,
         amount=Money(Decimal(100)),
@@ -52,7 +53,7 @@ def test_add_new_transaction_duplicate():
 
     with pytest.raises(PaymentEntryIsNotUniqueError, match="Транзакция дублируется"):
         add_new_transaction(
-            repository=repository,
+            account_repository=account_repository,
             account=account2,
             transaction_id=tr_id,
             amount=Money(Decimal(10)),

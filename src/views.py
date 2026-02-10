@@ -1,9 +1,9 @@
 from dtos import UserDTO
 from domain.models import Account, PaymentEntry, UserId
+from domain.exceptions import UserDoesNotExists
 from adapters.repository import (
     AbstractAccountRepository,
     AbstractUserRepository,
-    UserDoesNotExists,
 )
 
 

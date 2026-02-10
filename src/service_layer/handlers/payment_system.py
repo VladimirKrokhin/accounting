@@ -1,24 +1,29 @@
 from decimal import Decimal
 import hashlib
-from adapters.repository import (
-    AbstractAccountRepository,
-    AbstractUserRepository,
-    UserDoesNotExists,
-)
-from domain.models import (
+from typing import TYPE_CHECKING
+
+from domain.exceptions import PaymentEntryIsNotUniqueError
+from domain.types import (
     AccountId,
-    PaymentEntryIsNotUniqueError,
-    TransactionId,
     PaymentEntryId,
     Money,
-    Account,
     UserId,
 )
+from domain.models import Account
 from domain.messages import HandlePaymentSystemTransaction
+from domain.exceptions import SignatureIsNotValid, UserDoesNotExists
+from adapters.repository import (
+    AbstractAccountRepository,
+)
+from service_layer.unit_of_work import AbstractUnitOfWork
 
+if TYPE_CHECKING:
+    from domain.types import (
+        AccountId,
+        TransactionId,
+    )
 
-class SignatureIsNotValid(Exception):
-    pass
+__all__ = ["process_payment_system_transaction"]
 
 
 def validate_transaction_signature(
@@ -68,7 +73,7 @@ def add_new_transaction(
     """
 
     is_duplicate = account_repository.is_payment_entry_exists_by_transaction_id(
-        transaction_id
+        transaction_id=transaction_id
     )
 
     if is_duplicate:
@@ -86,9 +91,7 @@ def add_new_transaction(
 
 def process_payment_system_transaction(
     message: HandlePaymentSystemTransaction,
-    account_repository: AbstractAccountRepository,
-    user_repository: AbstractUserRepository,
-    secret: str,
+    uow: AbstractUnitOfWork,
 ) -> tuple[AccountId, PaymentEntryId, bool]:
     """
     Обработать транзакцию от платежной системы.
@@ -108,6 +111,10 @@ def process_payment_system_transaction(
     account_id = message.account_id
     amount = message.amount
     signature = message.signature
+    payment_system_secret_key = message.secret_key
+
+    user_repository = uow.users
+    account_repository = uow.accounts
 
     # 1. Проверить подпись объекта
     validate_transaction_signature(
@@ -116,7 +123,7 @@ def process_payment_system_transaction(
         account_id=account_id,
         user_id=user_id,
         amount=amount,
-        secret_key=secret,
+        secret_key=payment_system_secret_key,
     )
 
     # Проверим, существует ли пользователь.

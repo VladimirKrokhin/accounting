@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import List
 from typing import Optional
+
 from sqlalchemy import UUID, Boolean, ForeignKey, Numeric, Uuid
 from sqlalchemy import String
 from sqlalchemy import Numeric
@@ -22,15 +23,16 @@ class User(Base):
     Общая сущность пользователя.
     """
 
-    __tablename__ = "user"
+    __tablename__ = "base_user"
     id: Mapped[int] = mapped_column(primary_key=True)
-    full_name: Mapped[Optional[str]]
-    email_address: Mapped[str]
+    full_name: Mapped[Optional[str]] = mapped_column(String(255))
+    email_address: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
 
     type: Mapped[str] = mapped_column(String(50))
 
     __mapper_args__ = {
-        "polymorphic_identity": "user",
+        "polymorphic_identity": "base_user",
         "polymorphic_on": "type",
     }
 
@@ -43,11 +45,11 @@ class AccountsUser(User):
 
     __tablename__ = "account_user"
 
-    id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(ForeignKey("base_user.id"), primary_key=True)
     accounts: Mapped[List["Account"]] = relationship(back_populates="user")
 
     __mapper_args__ = {
-        "polymorphic_identity": "AccountsUser",
+        "polymorphic_identity": "user",
     }
 
     def __repr__(self) -> str:
@@ -61,10 +63,10 @@ class Administrator(User):
 
     __tablename__ = "admin_user"
 
-    id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(ForeignKey("base_user.id"), primary_key=True)
 
     __mapper_args__ = {
-        "polymorphic_identity": "AdministratorUser",
+        "polymorphic_identity": "admin",
     }
 
     def __repr__(self) -> str:
@@ -81,7 +83,7 @@ class Account(Base):
 
     __tablename__ = "account"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("base_user.id"))
     balance: Mapped[Decimal] = mapped_column(Numeric())
 
     user: Mapped["AccountsUser"] = relationship(back_populates="accounts")

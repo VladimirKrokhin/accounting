@@ -3,14 +3,16 @@ from sanic.app import Sanic
 from sanic.request import Request
 from sanic.response import json, HTTPResponse
 
-from entrypoints.sanic_app.status_codes import StatusCodes
-from services.payment_system import (
+
+from domain.messages import HandlePaymentSystemTransaction
+from domain.exceptions import (
+    PaymentEntryIsNotUniqueError,
     SignatureIsNotValid,
     UserDoesNotExists,
 )
-from domain.messages import HandlePaymentSystemTransaction
-from domain.models import PaymentEntryIsNotUniqueError
+from entrypoints.sanic_app.status_codes import StatusCodes
 
+__all__ = ["payment_bp"]
 
 # Обработка платежей
 payment_bp = Blueprint("payments", url_prefix="/transactions")
@@ -21,6 +23,8 @@ payment_bp = Blueprint("payments", url_prefix="/transactions")
 @payment_bp.post("/")
 async def handle_transaction(request: Request) -> HTTPResponse:
     app = Sanic.get_app("accounts")
+    mb = app.ctx.message_bus
+
     transaction_info = request.json
     transaction = HandlePaymentSystemTransaction(
         transaction_id=transaction_info["transaction_id"],
@@ -28,12 +32,11 @@ async def handle_transaction(request: Request) -> HTTPResponse:
         account_id=transaction_info["account_id"],
         amount=transaction_info["amount"],
         signature=transaction_info["signature"],
+        secret_key=app.config.PAYMENT_SYSTEM_SECRET_KEY,
     )
 
-    handler = app.ctx.handlers[HandlePaymentSystemTransaction]
-
     try:
-        account_id, pe_id, is_new_account_created = handler(transaction)
+        mb.handle(transaction)
     except SignatureIsNotValid:
         return json(
             {"status": "error", "message": "signature is not valid"},
@@ -54,9 +57,6 @@ async def handle_transaction(request: Request) -> HTTPResponse:
         {
             "status": "success",
             "message": "transaction processed",
-            "account_id": account_id,
-            "payment_id": str(pe_id),
-            "is_new_account_created": is_new_account_created,
         },
         status=StatusCodes.SUCCESS_CREATED,
     )

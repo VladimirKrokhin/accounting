@@ -1,19 +1,21 @@
 from abc import ABCMeta, abstractmethod
 
-from sqlalchemy import exists, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
-from domain.models import Account, AccountId, PaymentEntry, UserId, TransactionId
+
+from dtos import UserDTO
+from domain.types import AccountId, UserId, TransactionId
+from domain.models import Account, PaymentEntry
+from domain.exceptions import UserDoesNotExists
+
+from adapters.sqlalchemy.models import User
 from adapters.sqlalchemy.mappers import (
     AccountMapper,
     PaymentEntryMapper,
     SQLAlchemyAccount,
     SQLAlchemyPaymentEntry,
+    UserMapper,
 )
-from dtos import UserDTO
-
-
-class UserDoesNotExists(Exception):
-    pass
 
 
 class AbstractAccountRepository(metaclass=ABCMeta):
@@ -327,3 +329,57 @@ class FakeUserRepository(AbstractUserRepository):
                 users.append(user)
 
         return users
+
+
+class SQLAlchemyUserRepository(AbstractUserRepository):
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def is_user_exists(self, user_id: UserId) -> bool:
+        stmt = select(exists().where(User.id == user_id))
+        return self._session.scalar(stmt) or False
+
+    def is_user_exists_by_email(self, email: str) -> bool:
+        stmt = select(exists().where(User.email_address == email))
+        return self._session.scalar(stmt) or False
+
+    def get_user(self, user_id: UserId) -> UserDTO:
+        orm_user = self._session.get(User, user_id)
+        if not orm_user:
+            raise UserDoesNotExists(f"User {user_id} not found")
+        return UserMapper.to_dto(orm_user)
+
+    def save_user(self, user: UserDTO) -> UserId:
+        orm_user = UserMapper.to_orm(user)
+
+        if user.user_id is not None:
+            # Если ID есть, используем merge для обновления существующего объекта
+            orm_user = self._session.merge(orm_user)
+        else:
+            # Если ID нет, добавляем как новый
+            self._session.add(orm_user)
+
+        # Flush отправляет изменения в БД и получает ID, но не фиксирует транзакцию
+        self._session.flush()
+
+        generated_id = UserId(orm_user.id)
+        user.user_id = generated_id
+        return generated_id
+
+    def delete_user(self, user_id: UserId) -> None:
+        if not self.is_user_exists(user_id):
+            raise UserDoesNotExists(f"Cannot delete: User {user_id} not found")
+
+        stmt = delete(User).where(User.id == user_id)
+        self._session.execute(stmt)
+        self._session.flush()
+
+    def get_users(self) -> list[UserDTO]:
+        stmt = select(User)
+        result = self._session.scalars(stmt).all()
+        return [UserMapper.to_dto(u) for u in result]
+
+    def get_users_by_email(self, email: str) -> list[UserDTO]:
+        stmt = select(User).where(User.email_address == email)
+        result = self._session.scalars(stmt).all()
+        return [UserMapper.to_dto(u) for u in result]
