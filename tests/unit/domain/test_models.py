@@ -11,7 +11,6 @@ from domain.models import (
     Account,
     AccountId,
     TransactionId,
-    PaymentEntryId,
     UserId,
     Money,
     next_payment_entry_id,
@@ -121,7 +120,7 @@ def test_account_accrue_payment_does_not_exists():
         balance=Money(Decimal(1)),
     )
 
-    pe_id = PaymentEntryId(next_payment_entry_id())
+    pe_id = next_payment_entry_id()
 
     with pytest.raises(PaymentEntryDoesNotExistsError):
         account.accrue_payment_entry(pe_id)

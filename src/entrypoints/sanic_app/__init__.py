@@ -1,3 +1,3 @@
-from entrypoints.sanic_app.app import app
+from entrypoints.sanic_app.app import app, init_app
 
-__all__ = ["app"]
+__all__ = ["app", "init_app"]

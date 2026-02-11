@@ -1,124 +1,157 @@
 import pytest
-from domain.messages import CreateUser, DeleteUser, UpdateUser
-from domain.models import UserId
-from domain.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
-from dtos import UserDTO, UserType
-from service_layer.handlers.user import (
-    create_user,
-    update_user,
-    delete_user,
+from datetime import timedelta
+from adapters.repository import FakeUserRepository
+from domain.types import UserId
+from domain.exceptions import (
+    AuthentificationError,
+    ExpiredSignatureError,
+    InvalidTokenError,
 )
+from dtos import UserDTO, UserType
 from service_layer.unit_of_work import FakeUnitOfWork
 
+# Предполагаем, что ваши функции лежат в service_layer/auth.py
+from adapters.auth import (
+    AuthDTO,
+    AuthentificateDTO,
+    check_password_by_hash,
+    generate_password_hash,
+    authentificate,
+    generate_token,
+    extract_auth_payload_from_token,
+    ExtractPayloadFromTokenDTO,
+    is_user_type_in,
+)
 
-# Фикстура репозитория для изоляции тестов
+
 @pytest.fixture
-def uow():
-    return FakeUnitOfWork()
+def auth_config():
+    return {"secret": "test-secret", "algo": "HS256", "exp": timedelta(minutes=30)}
 
 
-# --- Тесты создания (create_user) ---
+@pytest.fixture
+def uow_with_user():
+    user = UserDTO(
+        user_id=UserId(1),
+        email="test@example.com",
+        full_name="Test User",
+        user_type=UserType.USER,
+        password_hash=generate_password_hash("correct_password"),
+    )
+    # Инициализируем FakeUnitOfWork с предзаполненным репозиторием
+    return FakeUnitOfWork(users=FakeUserRepository({UserId(1): user}))
 
 
-def test_create_user_success(uow):
-    message = CreateUser(
-        email="test@example.com", password="secret_password", full_name="Full Name"
+def test_authentificate_success(uow_with_user):
+    dto = AuthDTO(email="test@example.com", password="correct_password")
+    user = authentificate(dto, uow_with_user)
+
+    assert user.email == "test@example.com"
+    assert user.user_id == 1
+
+
+def test_authentificate_fail_wrong_password(uow_with_user):
+    dto = AuthDTO(email="test@example.com", password="wrong_password")
+
+    with pytest.raises(AuthentificationError):
+        authentificate(dto, uow_with_user)
+
+
+def test_authentificate_fail_user_not_found(uow_with_user):
+    dto = AuthDTO(email="unknown@example.com", password="any_password")
+
+    with pytest.raises(AuthentificationError):
+        authentificate(dto, uow_with_user)
+
+
+def test_generate_and_extract_token_success(auth_config):
+
+    user = UserDTO(
+        user_id=UserId(99),
+        email="q@q.com",
+        user_type=UserType.USER,
+        password_hash="hash",
+        full_name="Name",
     )
 
-    user_id = create_user(message, uow)
-
-    assert user_id is not None
-    assert uow.users.is_user_exists(user_id)
-
-    created_user = uow.users.get_user(user_id)
-    assert created_user.email == "test@example.com"
-    # Проверяем, что пароль не хранится в открытом виде
-    assert created_user.password_hash != "secret_password"
-
-
-def test_create_user_fails_if_email_exists(uow):
-    email = "duplicate@test.com"
-    # Предварительно сохраняем пользователя
-    uow.users.save_user(
-        UserDTO(
-            email=email, full_name="User", user_type=UserType.USER, password_hash="..."
-        )
+    token = generate_token(
+        user=user,
+        secret_key=auth_config["secret"],
+        expiration_time=auth_config["exp"],
+        encryption_algorithm=auth_config["algo"],
     )
 
-    message = CreateUser(email=email, password="password", full_name="Create User")
-
-    with pytest.raises(UserIsAlreadyExistsError, match="уже существует"):
-        create_user(message, uow)
-
-
-# --- Тесты обновления (update_user) ---
-
-
-def test_update_user_success(uow):
-    # 1. Создаем исходного пользователя
-    old_id = uow.users.save_user(
-        UserDTO(
-            email="old@test.com",
-            full_name="Old Name",
-            user_type=UserType.USER,
-            password_hash="old_hash",
-        )
+    extract_dto = ExtractPayloadFromTokenDTO(
+        token=token,
+        secret_key=auth_config["secret"],
+        encryption_algorithm=auth_config["algo"],
     )
 
-    # 2. Обновляем
-    message = UpdateUser(
-        user_id=old_id,
-        email="new@test.com",
-        full_name="New Name",
-        password="new_password",
+    user_id = extract_auth_payload_from_token(extract_dto)
+    assert user_id == 99
+
+
+def test_extract_token_invalid_signature(auth_config):
+    user = UserDTO(
+        user_id=UserId(1),
+        email="a@a.com",
+        user_type=UserType.USER,
+        password_hash="h",
+        full_name="n",
     )
 
-    update_user(message, uow)
-
-    updated = uow.users.get_user(old_id)
-    assert updated.email == "new@test.com"
-    assert updated.full_name == "New Name"
-
-
-def test_update_user_fails_if_not_found(uow):
-    message = UpdateUser(
-        user_id=UserId(999), email="any@test.com", full_name="Any", password="..."
+    token = generate_token(
+        user, auth_config["secret"], auth_config["exp"], auth_config["algo"]
     )
 
-    with pytest.raises(UserDoesNotExists):
-        update_user(message, uow)
-
-
-def test_update_user_fails_if_new_email_taken_by_another(uow):
-    # Создаем двоих пользователей
-    user1_id = uow.users.save_user(UserDTO("u1@t.com", "U1", UserType.USER, "h1"))
-    user2_id = uow.users.save_user(UserDTO("u2@t.com", "U2", UserType.USER, "h2"))
-
-    # Пытаемся первому пользователю поставить email второго
-    message = UpdateUser(
-        user_id=user1_id, email="u2@t.com", full_name="U1 New", password="p"
+    # Пытаемся декодировать с другим ключом
+    extract_dto = ExtractPayloadFromTokenDTO(
+        token=token, secret_key="WRONG_SECRET", encryption_algorithm=auth_config["algo"]
     )
 
-    with pytest.raises(
-        UserIsAlreadyExistsError, match="Существует другой пользователь"
-    ):
-        update_user(message, uow)
+    with pytest.raises(InvalidTokenError):
+        extract_auth_payload_from_token(extract_dto)
 
 
-# --- Тесты удаления (delete_user) ---
+def test_extract_token_expired(auth_config):
+    user = UserDTO(
+        user_id=UserId(1),
+        email="a@a.com",
+        user_type=UserType.USER,
+        password_hash="h",
+        full_name="n",
+    )
+
+    # Создаем токен с отрицательным временем жизни
+    token = generate_token(
+        user,
+        auth_config["secret"],
+        expiration_time=timedelta(seconds=-1),
+        encryption_algorithm=auth_config["algo"],
+    )
+
+    extract_dto = ExtractPayloadFromTokenDTO(
+        token=token,
+        secret_key=auth_config["secret"],
+        encryption_algorithm=auth_config["algo"],
+    )
+
+    with pytest.raises(ExpiredSignatureError):
+        extract_auth_payload_from_token(extract_dto)
 
 
-def test_delete_user_success(uow):
-    user_id = uow.users.save_user(UserDTO("del@t.com", "Del", UserType.USER, "h"))
+def test_password_hashing():
+    password = "my_secret_password"
+    hashed = generate_password_hash(password)
 
-    message = DeleteUser(user_id=user_id)
-    delete_user(message, uow)
+    assert hashed != password
+    assert check_password_by_hash(password, hashed) is True
+    assert check_password_by_hash("wrong", hashed) is False
 
-    assert uow.users.is_user_exists(user_id) is False
 
+def test_is_user_type_in_check(uow_with_user):
+    repo = uow_with_user.users
 
-def test_delete_user_fails_if_not_found(uow):
-    message = DeleteUser(user_id=UserId(404))
-
-    with pytest.raises(UserDoesNotExists):
-        delete_user(message, uow)
+    # Юзер с ID 1 имеет тип USER (из фикстуры)
+    assert is_user_type_in(UserId(1), [UserType.USER], repo) is True
+    assert is_user_type_in(UserId(1), [UserType.ADMIN], repo) is False

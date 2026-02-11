@@ -19,7 +19,7 @@ def test_add_new_transaction_success():
     account = Account(id_=AccountId(1), user_id=UserId(1), balance=Money(Decimal(1)))
     tr_id = TransactionId(uuid4())
 
-    pe_id = add_new_transaction(
+    add_new_transaction(
         account_repository=account_repository,
         account=account,
         transaction_id=tr_id,
@@ -28,14 +28,15 @@ def test_add_new_transaction_success():
 
     # Платеж добавлен
     assert len(account.payments) == 1
+    p = tuple(account.payments)[0]
+    assert p.transaction_id == tr_id
+    assert p.account_id == account.id_
 
     # Баланс не изменен
     assert account.balance == Money(Decimal(1))
 
     # Платеж не начислен
-    p = tuple(account.payments)[0]
     assert p.is_accrued == False
-    assert p.account_id == account.id_
 
 
 def test_add_new_transaction_duplicate():

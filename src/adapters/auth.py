@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 import bcrypt
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from domain.types import UserId
 from domain.exceptions import (
@@ -104,7 +104,10 @@ def generate_token(
     if user_id is None:
         raise ValueError("user_id указан как None")
 
-    payload = {"user_id": int(user_id), "exp": datetime.now() + expiration_time}
+    payload = {
+        "user_id": int(user_id),
+        "exp": datetime.now(tz=timezone.utc) + expiration_time,
+    }
     token = jwt.encode(payload, secret_key, algorithm=encryption_algorithm)
 
     return token

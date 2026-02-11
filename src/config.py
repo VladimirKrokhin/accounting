@@ -43,10 +43,11 @@ def parse_time(time_str: str) -> timedelta:
 
 
 def load_config() -> Config:
-    postgres_host = os.environ.get("DB_HOST", "localhost")
-    postgres_port = 54321 if postgres_host == "localhost" else 5432
-    postgres_password = os.environ.get("DB_PASSWORD", "abc123")
-    postgres_user, postgres_db_name = "accounts", "accounts"
+    postgres_host = os.environ.get("POSTGRES_HOST", "localhost")
+    postgres_port = int(os.environ.get("POSTGRES_HOST", 5432))
+    postgres_password = os.environ.get("POSTGRES_PASSWORD", "accounts")
+    postgres_user = os.environ.get("POSTGRES_USER", "accounts")
+    postgres_db_name = os.environ.get("POSTGRES_DB_NAME", "accounts")
     payment_system_secret_key = os.environ.get(
         "PAYMENT_SYSTEM_SECRET_KEY", "gfdmhghif38yrf9ew0jkf32"
     )
