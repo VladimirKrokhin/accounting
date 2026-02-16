@@ -3,8 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from accounts.dtos import UserDTO, UserType
-from accounts.domain.models import UserId
-from accounts.domain.exceptions import UserDoesNotExists
+from accounts.core.entities import UserId
+from accounts.core.exceptions import UserDoesNotExists
 from accounts.adapters.repository import SQLAlchemyUserRepository
 from accounts.adapters.sqlalchemy.models import Base
 

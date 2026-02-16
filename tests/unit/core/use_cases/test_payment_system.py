@@ -1,20 +1,18 @@
 from decimal import Decimal
 from uuid import UUID
 
-from accounts.dtos import UserDTO, UserType
-from accounts.domain.models import Account, AccountId, Money, TransactionId, UserId
-from accounts.domain.messages import HandlePaymentSystemTransaction
+from accounts.config import PaymentSystemConfig
+from accounts.core.use_cases.payment_system import ProcessPaymentSystemWebHook
+from accounts.dtos import HandlePaymentSystemTransactionDTO, UserDTO, UserType
+from accounts.core.entities import Account, AccountId, Money, TransactionId, UserId
 from accounts.adapters.repository import (
     FakeAccountRepository,
     FakeUserRepository,
 )
-from accounts.service_layer.handlers.payment_system import (
-    process_payment_system_transaction,
-)
 from accounts.service_layer.unit_of_work import FakeUnitOfWork
 
 
-def test_process_payment_system_transaction_success_user_has_account():
+async def test_process_payment_system_transaction_success_user_has_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
 
@@ -43,16 +41,20 @@ def test_process_payment_system_transaction_success_user_has_account():
     user_repository.save_user(user)
     uow = FakeUnitOfWork(users=user_repository, accounts=account_repository)
 
-    message = HandlePaymentSystemTransaction(
+    dto = HandlePaymentSystemTransactionDTO(
         transaction_id=transaction_id,
         user_id=user_id,
         account_id=account_id,
         amount=amount,
         signature=signature,
+    )
+
+    config = PaymentSystemConfig(
         secret_key=secret,
     )
 
-    process_payment_system_transaction(message=message, uow=uow)
+    use_case = ProcessPaymentSystemWebHook(config=config, uow=uow)
+    await use_case.execute(dto)
 
     account = account_repository.get_account_by_id(account_id)
 
@@ -68,7 +70,7 @@ def test_process_payment_system_transaction_success_user_has_account():
     assert p.is_accrued == True
 
 
-def test_process_payment_system_transaction_success_user_has_not_account():
+async def test_process_payment_system_transaction_success_user_has_not_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
 
@@ -92,13 +94,12 @@ def test_process_payment_system_transaction_success_user_has_not_account():
 
     uow = FakeUnitOfWork(users=user_repository, accounts=account_repository)
 
-    message = HandlePaymentSystemTransaction(
+    dto = HandlePaymentSystemTransactionDTO(
         transaction_id=transaction_id,
         user_id=user_id,
         account_id=account_id,
         amount=amount,
         signature=signature,
-        secret_key=secret,
     )
 
     # Счета нет
@@ -106,7 +107,12 @@ def test_process_payment_system_transaction_success_user_has_not_account():
         user_id=user_id, account_id=account_id
     )
 
-    process_payment_system_transaction(message=message, uow=uow)
+    config = PaymentSystemConfig(
+        secret_key=secret,
+    )
+
+    use_case = ProcessPaymentSystemWebHook(config=config, uow=uow)
+    await use_case.execute(dto)
 
     account = account_repository.get_account_by_id(account_id)
 

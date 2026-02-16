@@ -2,8 +2,9 @@ from sanic.app import Sanic
 from sanic.request import Request
 from sanic.response import json
 
+from accounts.config import AuthConfig
 from accounts.dtos import UserType
-from accounts.domain.types import UserId
+from accounts.core.types import UserId
 from accounts.adapters.repository import AbstractUserRepository
 from accounts.adapters.auth import (
     ExpiredSignatureError,
@@ -12,8 +13,8 @@ from accounts.adapters.auth import (
     is_user_type_in,
     extract_auth_payload_from_token,
 )
-from accounts.service_layer.message_bus import MessageBus
 from accounts.entrypoints.sanic_app.status_codes import StatusCodes
+from accounts.service_layer.unit_of_work import AbstractUnitOfWork
 
 __all__ = ["protected", "is_user", "is_admin", "is_user_or_admin"]
 
@@ -33,12 +34,13 @@ async def protected(request: Request):
         raw_token = token.split(" ")[1]
         dto = ExtractPayloadFromTokenDTO(
             token=raw_token,
+        )
+        config = AuthConfig(
+            expiration_time=app.config.AUTH_EXPIRATION_TIME,
             encryption_algorithm=app.config.AUTH_ENCRYPTION_ALGORITHM,
             secret_key=app.config.AUTH_SECRET_KEY,
         )
-        user_id = extract_auth_payload_from_token(
-            dto=dto,
-        )
+        user_id = extract_auth_payload_from_token(dto=dto, config=config)
         request.ctx.user_id = user_id
     except ExpiredSignatureError, InvalidTokenError:
         return json(
@@ -51,9 +53,9 @@ def get_user_type_required_middleware(allowed_user_types: list[UserType]):
     """Фабрика для миддлварей по типам пользователей."""
 
     async def middleware(request: Request):
-        app = Sanic.get_app("accounts")
-        mb: MessageBus = app.ctx.message_bus
-        user_repository: AbstractUserRepository = mb.uow.users
+        app = request.app
+        uow: AbstractUnitOfWork = app.ctx.uow
+        user_repository: AbstractUserRepository = uow.users
         user_id: UserId = request.ctx.user_id
 
         if not user_id:

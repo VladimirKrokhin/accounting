@@ -1,12 +1,12 @@
 from accounts.dtos import UserDTO, UserType
-from accounts.domain.types import (
+from accounts.core.types import (
     Money,
     AccountId,
     PaymentEntryId,
     TransactionId,
     UserId,
 )
-from accounts.domain.models import (
+from accounts.core.entities import (
     Account,
     PaymentEntry,
 )

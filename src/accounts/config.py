@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 import os
 import re
@@ -53,7 +53,9 @@ def load_config() -> Config:
     payment_system_secret_key = os.environ.get(
         "PAYMENT_SYSTEM_SECRET_KEY", "gfdmhghif38yrf9ew0jkf32"
     )
-    auth_expiration_time = parse_time(os.environ.get("AUTH_EXPIRATION_TIME", "24h0m0s"))
+    auth_expiration_time = parse_time(
+        os.environ.get("AUTH_EXPIRATION_TIME", "24hr0m0s")
+    )
     auth_encryption_algorithm = os.environ.get("AUTH_ENCRYPTION_ALGORITHM", "HS256")
     auth_secret_key = os.environ.get("AUTH_SECRET_KEY", "your-very-secret-key")
 
@@ -70,3 +72,15 @@ def load_config() -> Config:
     )
 
     return config
+
+
+@dataclass(frozen=True)
+class PaymentSystemConfig:
+    secret_key: str
+
+
+@dataclass(frozen=True)
+class AuthConfig:
+    secret_key: str = field(repr=False)
+    expiration_time: timedelta
+    encryption_algorithm: str

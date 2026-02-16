@@ -4,8 +4,10 @@ from sanic.request import Request
 from sanic.response import json, HTTPResponse
 
 
-from accounts.domain.messages import HandlePaymentSystemTransaction
-from accounts.domain.exceptions import (
+from accounts.dtos import HandlePaymentSystemTransactionDTO
+from accounts.config import PaymentSystemConfig
+from accounts.core.use_cases.payment_system import ProcessPaymentSystemWebHook
+from accounts.core.exceptions import (
     PaymentEntryIsNotUniqueError,
     SignatureIsNotValid,
     UserDoesNotExists,
@@ -22,21 +24,24 @@ payment_bp = Blueprint("payments", url_prefix="/transactions")
 # Для работы с платежами: обработка вебхука от сторонней платежной системы.
 @payment_bp.post("/")
 async def handle_transaction(request: Request) -> HTTPResponse:
-    app = Sanic.get_app("accounts")
-    mb = app.ctx.message_bus
+    app = request.app
+    uow = app.ctx.uow
 
     transaction_info = request.json
-    transaction = HandlePaymentSystemTransaction(
+    transaction_dto = HandlePaymentSystemTransactionDTO(
         transaction_id=transaction_info["transaction_id"],
         user_id=transaction_info["user_id"],
         account_id=transaction_info["account_id"],
         amount=transaction_info["amount"],
         signature=transaction_info["signature"],
+    )
+    config = PaymentSystemConfig(
         secret_key=app.config.PAYMENT_SYSTEM_SECRET_KEY,
     )
 
     try:
-        mb.handle(transaction)
+        use_case = ProcessPaymentSystemWebHook(uow=uow, config=config)
+        await use_case.execute(transaction_dto)
     except SignatureIsNotValid:
         return json(
             {"status": "error", "message": "signature is not valid"},

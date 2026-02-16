@@ -2,16 +2,16 @@ from decimal import Decimal
 from uuid import uuid4
 import pytest
 
-from accounts.domain.exceptions import PaymentEntryIsNotUniqueError
-from accounts.domain.models import (
+from accounts.core.exceptions import PaymentEntryIsNotUniqueError
+from accounts.core.entities import (
     TransactionId,
     Account,
     Money,
     UserId,
     AccountId,
 )
+from accounts.core.use_cases.payment_system import add_new_transaction
 from accounts.adapters.repository import FakeAccountRepository
-from accounts.service_layer.handlers.payment_system import add_new_transaction
 
 
 def test_add_new_transaction_success():

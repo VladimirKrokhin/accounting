@@ -4,9 +4,9 @@ from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
 from accounts.dtos import UserDTO
-from accounts.domain.types import AccountId, UserId, TransactionId
-from accounts.domain.models import Account, PaymentEntry
-from accounts.domain.exceptions import UserDoesNotExists
+from accounts.core.types import AccountId, UserId, TransactionId
+from accounts.core.entities import Account, PaymentEntry
+from accounts.core.exceptions import UserDoesNotExists
 
 from accounts.adapters.sqlalchemy.models import User
 from accounts.adapters.sqlalchemy.mappers import (

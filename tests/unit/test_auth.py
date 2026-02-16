@@ -1,7 +1,8 @@
 import pytest
 from datetime import timedelta
 
-from accounts.domain.types import UserId
+from accounts.config import AuthConfig
+from accounts.core.types import UserId
 from accounts.adapters.repository import FakeUserRepository
 from accounts.adapters.auth import (
     AuthDTO,
@@ -35,7 +36,7 @@ def uow_with_user():
         password_hash=generate_password_hash("correct_password"),
     )
     # Инициализируем FakeUnitOfWork с предзаполненным репозиторием
-    return FakeUnitOfWork(users=FakeUserRepository({UserId(1): user}))
+    return FakeUnitOfWork(users=FakeUserRepository({UserId(1): user}, user_serial=1))
 
 
 def test_authentificate_success(uow_with_user):
@@ -70,20 +71,25 @@ def test_generate_and_extract_token_success(auth_config):
         full_name="Name",
     )
 
-    token = generate_token(
-        user=user,
+    auth_config = AuthConfig(
         secret_key=auth_config["secret"],
         expiration_time=auth_config["exp"],
         encryption_algorithm=auth_config["algo"],
     )
 
-    extract_dto = ExtractPayloadFromTokenDTO(
-        token=token,
-        secret_key=auth_config["secret"],
-        encryption_algorithm=auth_config["algo"],
+    token = generate_token(
+        user=user,
+        config=auth_config,
     )
 
-    user_id = extract_auth_payload_from_token(extract_dto)
+    extract_dto = ExtractPayloadFromTokenDTO(
+        token=token,
+    )
+
+    user_id = extract_auth_payload_from_token(
+        extract_dto,
+        config=auth_config,
+    )
     assert user_id == 99
 
 
@@ -96,17 +102,27 @@ def test_extract_token_invalid_signature(auth_config):
         full_name="n",
     )
 
-    token = generate_token(
-        user, auth_config["secret"], auth_config["exp"], auth_config["algo"]
+    config = AuthConfig(
+        auth_config["secret"],
+        auth_config["exp"],
+        auth_config["algo"],
     )
+
+    token = generate_token(user, config)
 
     # Пытаемся декодировать с другим ключом
     extract_dto = ExtractPayloadFromTokenDTO(
-        token=token, secret_key="WRONG_SECRET", encryption_algorithm=auth_config["algo"]
+        token=token,
+    )
+
+    config = AuthConfig(
+        "other-key",
+        auth_config["exp"],
+        auth_config["algo"],
     )
 
     with pytest.raises(InvalidTokenError):
-        extract_auth_payload_from_token(extract_dto)
+        extract_auth_payload_from_token(extract_dto, config)
 
 
 def test_extract_token_expired(auth_config):
@@ -119,21 +135,22 @@ def test_extract_token_expired(auth_config):
     )
 
     # Создаем токен с отрицательным временем жизни
-    token = generate_token(
-        user,
-        auth_config["secret"],
+    config = AuthConfig(
+        secret_key=auth_config["secret"],
         expiration_time=timedelta(seconds=-1),
         encryption_algorithm=auth_config["algo"],
+    )
+    token = generate_token(
+        user,
+        config,
     )
 
     extract_dto = ExtractPayloadFromTokenDTO(
         token=token,
-        secret_key=auth_config["secret"],
-        encryption_algorithm=auth_config["algo"],
     )
 
     with pytest.raises(ExpiredSignatureError):
-        extract_auth_payload_from_token(extract_dto)
+        extract_auth_payload_from_token(extract_dto, config)
 
 
 def test_password_hashing():
@@ -148,6 +165,5 @@ def test_password_hashing():
 def test_is_user_type_in_check(uow_with_user):
     repo = uow_with_user.users
 
-    # Юзер с ID 1 имеет тип USER (из фикстуры)
     assert is_user_type_in(UserId(1), [UserType.USER], repo) is True
     assert is_user_type_in(UserId(1), [UserType.ADMIN], repo) is False

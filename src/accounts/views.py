@@ -1,6 +1,6 @@
 from accounts.dtos import UserDTO
-from accounts.domain.models import Account, PaymentEntry, UserId
-from accounts.domain.exceptions import UserDoesNotExists
+from accounts.core.entities import Account, PaymentEntry, UserId
+from accounts.core.exceptions import UserDoesNotExists
 from accounts.adapters.repository import (
     AbstractAccountRepository,
     AbstractUserRepository,

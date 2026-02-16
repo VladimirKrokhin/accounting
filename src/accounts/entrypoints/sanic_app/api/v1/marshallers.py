@@ -1,7 +1,7 @@
 from typing import Any
 
 from accounts.adapters.auth import AuthSuccessDTO
-from accounts.domain.models import Account, PaymentEntry
+from accounts.core.entities import Account, PaymentEntry
 from accounts.dtos import UserDTO
 
 

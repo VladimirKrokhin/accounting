@@ -4,7 +4,8 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 
-from accounts.domain.types import UserId
+from accounts.config import AuthConfig
+from accounts.core.types import UserId
 from accounts.service_layer.unit_of_work import AbstractUnitOfWork
 
 if TYPE_CHECKING:
@@ -54,17 +55,12 @@ class AuthSuccessDTO:
 @dataclass(frozen=True)
 class ExtractPayloadFromTokenDTO:
     token: str = field(repr=False)
-    secret_key: str = field(repr=False)
-    encryption_algorithm: str = field(repr=False)
 
 
 @dataclass(frozen=True)
 class AuthentificateDTO:
     email: str
     password: str = field(repr=False)
-    secret_key: str = field(repr=False)
-    expiration_time: timedelta
-    encryption_algorithm: str
 
 
 def is_user_type_in(
@@ -95,31 +91,27 @@ def check_password_by_hash(password: str, hashed_password: str) -> bool:
 def authentificate(dto: AuthDTO, uow: AbstractUnitOfWork) -> UserDTO:
     """Аутентифицировать пользователя."""
 
-    user_repository = uow.users
-    users = user_repository.get_users_by_email(dto.email)
+    with uow:
+        user_repository = uow.users
+        users = user_repository.get_users_by_email(dto.email)
 
-    if len(users) != 1:
-        raise AuthentificationError
+        if len(users) != 1:
+            raise AuthentificationError
 
-    user = users[0]
+        user = users[0]
 
-    # Проверка хеша пароля
-    is_password_valid = check_password_by_hash(
-        password=dto.password, hashed_password=user.password_hash
-    )
+        # Проверка хеша пароля
+        is_password_valid = check_password_by_hash(
+            password=dto.password, hashed_password=user.password_hash
+        )
 
-    if not is_password_valid:
-        raise AuthentificationError
+        if not is_password_valid:
+            raise AuthentificationError
 
     return user
 
 
-def generate_token(
-    user: UserDTO,
-    secret_key: str,
-    expiration_time: timedelta,
-    encryption_algorithm: str,
-) -> str:
+def generate_token(user: UserDTO, config: AuthConfig) -> str:
     """Сгенерировать токен для пользователя."""
 
     user_id = user.user_id
@@ -128,25 +120,23 @@ def generate_token(
 
     payload = {
         "user_id": int(user_id),
-        "exp": datetime.now(tz=timezone.utc) + expiration_time,
+        "exp": datetime.now(tz=timezone.utc) + config.expiration_time,
     }
-    token = jwt.encode(payload, secret_key, algorithm=encryption_algorithm)
+    token = jwt.encode(
+        payload, config.secret_key, algorithm=config.encryption_algorithm
+    )
 
     return token
 
 
 def authentificate_and_return_access_token(
     dto: AuthentificateDTO,
+    config: AuthConfig,
     uow: AbstractUnitOfWork,
 ):
     auth_dto = AuthDTO(email=dto.email, password=dto.password)
     user_dto = authentificate(dto=auth_dto, uow=uow)
-    token = generate_token(
-        user=user_dto,
-        secret_key=dto.secret_key,
-        expiration_time=dto.expiration_time,
-        encryption_algorithm=dto.encryption_algorithm,
-    )
+    token = generate_token(user=user_dto, config=config)
 
     ret = AuthSuccessDTO(
         token=token,
@@ -157,13 +147,14 @@ def authentificate_and_return_access_token(
 
 def extract_auth_payload_from_token(
     dto: ExtractPayloadFromTokenDTO,
+    config: AuthConfig,
 ) -> UserId:
 
     try:
         payload = jwt.decode(
             dto.token,
-            dto.secret_key,
-            algorithms=[dto.encryption_algorithm],
+            config.secret_key,
+            algorithms=[config.encryption_algorithm],
         )
         user_id: UserId = payload["user_id"]
     except jwt.ExpiredSignatureError:

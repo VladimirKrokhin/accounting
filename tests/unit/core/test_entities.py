@@ -2,12 +2,12 @@ from decimal import Decimal
 from uuid import uuid4
 import pytest
 
-from accounts.domain.exceptions import (
+from accounts.core.exceptions import (
     PaymentEntryAlreadyAccrued,
     PaymentEntryDoesNotExistsError,
     PaymentEntryIsNotUniqueError,
 )
-from accounts.domain.models import (
+from accounts.core.entities import (
     Account,
     AccountId,
     TransactionId,

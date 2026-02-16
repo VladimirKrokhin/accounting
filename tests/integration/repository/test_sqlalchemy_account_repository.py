@@ -5,7 +5,8 @@ from uuid import uuid4
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from accounts.domain.models import Account, AccountId, Money, TransactionId, UserId
+from accounts.core.entities import Account
+from accounts.core.types import AccountId, Money, TransactionId, UserId
 from accounts.adapters.repository import SQLAlchemyAccountRepository
 from accounts.adapters.sqlalchemy.models import Base
 

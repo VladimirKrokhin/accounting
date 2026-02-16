@@ -1,14 +1,9 @@
 import pytest
 
-from accounts.dtos import UserDTO, UserType
-from accounts.domain.messages import CreateUser, DeleteUser, UpdateUser
-from accounts.domain.models import UserId
-from accounts.domain.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
-from accounts.service_layer.handlers.user import (
-    create_user,
-    update_user,
-    delete_user,
-)
+from accounts.core.use_cases.users import CreateUser, DeleteUser, UpdateUser
+from accounts.dtos import CreateUserDTO, DeleteUserDTO, UpdateUserDTO, UserDTO, UserType
+from accounts.core.entities import UserId
+from accounts.core.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
 from accounts.service_layer.unit_of_work import FakeUnitOfWork
 
 
@@ -22,11 +17,11 @@ def uow():
 
 
 def test_create_user_success(uow):
-    message = CreateUser(
+    dto = CreateUserDTO(
         email="test@example.com", password="secret_password", full_name="Test User"
     )
-
-    user_id = create_user(message, uow)
+    use_case = CreateUser(uow=uow)
+    user_id = use_case.execute(dto)
 
     assert user_id is not None
     assert uow.users.is_user_exists(user_id)
@@ -41,16 +36,23 @@ def test_create_user_success(uow):
 def test_create_user_fails_if_email_exists(uow):
     email = "duplicate@test.com"
     # Предварительно сохраняем пользователя
-    uow.users.save_user(
-        UserDTO(
-            email=email, full_name="User", user_type=UserType.USER, password_hash="..."
+    with uow:
+        uow.users.save_user(
+            UserDTO(
+                email=email,
+                full_name="User",
+                user_type=UserType.USER,
+                password_hash="...",
+            )
         )
-    )
+        uow.commit()
 
-    message = CreateUser(email=email, password="password", full_name="User")
+    dto = CreateUserDTO(email=email, password="password", full_name="User")
+
+    use_case = CreateUser(uow=uow)
 
     with pytest.raises(UserIsAlreadyExistsError, match="уже существует"):
-        create_user(message, uow)
+        user_id = use_case.execute(dto)
 
 
 # --- Тесты обновления (update_user) ---
@@ -68,14 +70,15 @@ def test_update_user_success(uow):
     )
 
     # 2. Обновляем
-    message = UpdateUser(
+    dto = UpdateUserDTO(
         user_id=old_id,
         email="new@test.com",
         full_name="New Name",
         password="new_password",
     )
 
-    update_user(message, uow)
+    use_case = UpdateUser(uow)
+    use_case.execute(dto)
 
     updated = uow.users.get_user(old_id)
     assert updated.email == "new@test.com"
@@ -83,12 +86,13 @@ def test_update_user_success(uow):
 
 
 def test_update_user_fails_if_not_found(uow):
-    message = UpdateUser(
+    dto = UpdateUserDTO(
         user_id=UserId(999), email="any@test.com", full_name="Any", password="..."
     )
 
+    use_case = UpdateUser(uow)
     with pytest.raises(UserDoesNotExists):
-        update_user(message, uow)
+        use_case.execute(dto)
 
 
 def test_update_user_fails_if_new_email_taken_by_another(uow):
@@ -97,14 +101,15 @@ def test_update_user_fails_if_new_email_taken_by_another(uow):
     user2_id = uow.users.save_user(UserDTO("u2@t.com", "U2", UserType.USER, "h2"))
 
     # Пытаемся первому пользователю поставить email второго
-    message = UpdateUser(
+    dto = UpdateUserDTO(
         user_id=user1_id, email="u2@t.com", full_name="U1 New", password="p"
     )
+    use_case = UpdateUser(uow)
 
     with pytest.raises(
         UserIsAlreadyExistsError, match="Существует другой пользователь"
     ):
-        update_user(message, uow)
+        use_case.execute(dto)
 
 
 # --- Тесты удаления (delete_user) ---
@@ -113,14 +118,17 @@ def test_update_user_fails_if_new_email_taken_by_another(uow):
 def test_delete_user_success(uow):
     user_id = uow.users.save_user(UserDTO("del@t.com", "Del", UserType.USER, "h"))
 
-    message = DeleteUser(user_id=user_id)
-    delete_user(message, uow)
+    dto = DeleteUserDTO(user_id=user_id)
+    use_case = DeleteUser(uow)
+
+    use_case.execute(dto)
 
     assert uow.users.is_user_exists(user_id) is False
 
 
 def test_delete_user_fails_if_not_found(uow):
-    message = DeleteUser(user_id=UserId(404))
+    dto = DeleteUserDTO(user_id=UserId(404))
+    use_case = DeleteUser(uow)
 
     with pytest.raises(UserDoesNotExists):
-        delete_user(message, uow)
+        use_case.execute(dto)

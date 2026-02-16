@@ -3,9 +3,16 @@ from uuid import uuid4
 import pytest
 
 
-from accounts.domain.models import Account, PaymentEntry, UserId, AccountId
-from accounts.domain.exceptions import UserDoesNotExists
-from accounts.domain.types import Money, TransactionId, next_payment_entry_id
+from accounts.core.entities import Account, PaymentEntry
+from accounts.core.types import (
+    UserId,
+    AccountId,
+    Money,
+    TransactionId,
+    next_payment_entry_id,
+)
+
+from accounts.core.exceptions import UserDoesNotExists
 from accounts.dtos import UserDTO, UserType
 from accounts.adapters.repository import FakeAccountRepository, FakeUserRepository
 from accounts.views import (
@@ -15,7 +22,6 @@ from accounts.views import (
     get_users,
 )
 from accounts.service_layer.unit_of_work import FakeUnitOfWork
-from accounts.bootstrap import bootstrap
 
 tr_id = TransactionId(uuid4())
 
@@ -48,17 +54,15 @@ def setup_data():
     account_repo.save_account(account)
 
     uow = FakeUnitOfWork(users=user_repo, accounts=account_repo)
-    mb = bootstrap(uow=uow)
 
-    return user_id, mb
+    return user_id, uow
 
 
 ## --- Тесты get_user_accounts ---
 
 
 def test_get_user_accounts_returns_correct_list(setup_data):
-    user_id, mb = setup_data
-    uow = mb.uow
+    user_id, uow = setup_data
     account_repo, user_repo = uow.accounts, uow.users
 
     accounts = get_user_accounts(user_id, account_repo, user_repo)
@@ -69,8 +73,7 @@ def test_get_user_accounts_returns_correct_list(setup_data):
 
 
 def test_get_user_accounts_raises_if_user_missing(setup_data):
-    _, mb = setup_data
-    uow = mb.uow
+    _, uow = setup_data
     account_repo, user_repo = uow.accounts, uow.users
 
     with pytest.raises(UserDoesNotExists):
@@ -81,8 +84,7 @@ def test_get_user_accounts_raises_if_user_missing(setup_data):
 
 
 def test_get_user_payments_success(setup_data):
-    user_id, mb = setup_data
-    uow = mb.uow
+    user_id, uow = setup_data
     account_repo, user_repo = uow.accounts, uow.users
 
     payments = get_user_payments(user_id, account_repo, user_repo)
@@ -95,8 +97,7 @@ def test_get_user_payments_success(setup_data):
 
 
 def test_get_user_data_returns_dto(setup_data):
-    user_id, mb = setup_data
-    uow = mb.uow
+    user_id, uow = setup_data
     user_repo = uow.users
     user_dto = get_user_data(user_id, user_repo)
 
@@ -108,8 +109,7 @@ def test_get_user_data_returns_dto(setup_data):
 
 
 def test_get_users_returns_all(setup_data):
-    _, mb = setup_data
-    uow = mb.uow
+    _, uow = setup_data
     user_repo = uow.users
 
     all_users = get_users(user_repo)

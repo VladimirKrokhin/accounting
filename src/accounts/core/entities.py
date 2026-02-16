@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from accounts.domain.exceptions import (
+from accounts.core.exceptions import (
     PaymentEntryAlreadyAccrued,
     PaymentEntryDoesNotExistsError,
     PaymentEntryIsNotUniqueError,
 )
-from accounts.domain.types import (
+from accounts.core.types import (
     AccountId,
     Money,
     PaymentEntryId,

@@ -2,11 +2,9 @@ from decimal import Decimal
 from uuid import UUID
 import pytest
 
-from accounts.domain.models import TransactionId, AccountId, UserId, Money
-from accounts.service_layer.handlers.payment_system import (
-    SignatureIsNotValid,
-    validate_transaction_signature,
-)
+from accounts.core.entities import TransactionId, AccountId, UserId, Money
+from accounts.core.exceptions import SignatureIsNotValid
+from accounts.core.use_cases.payment_system import validate_transaction_signature
 
 
 def test_validate_transaction_signature_success() -> None:
