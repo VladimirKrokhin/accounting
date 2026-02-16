@@ -1,9 +1,21 @@
+[build-system]
+requires = ["uv_build >= 0.10.0, <0.11.0"]
+build-backend = "uv_build"
+
 [project]
-name = "test-accounting"
+name = "accounts"
+authors = [
+    {name = "Vladimir Krokhin", email = "krokhinvladimir2004@gmail.com"}
+]
 version = "0.1.0"
+license = "GPL-3.0-or-later"
 description = "REST API application to store user payments and listening payment system webhooks"
 readme = "README.md"
 requires-python = ">=3.14"
+classifiers = [
+    "Framework :: Sanic",
+    "Programming Language :: Python :: 3"
+]
 dependencies = [
     "bcrypt>=5.0.0",
     "psycopg2>=2.9.11",
@@ -11,6 +23,9 @@ dependencies = [
     "sanic>=25.12.0",
     "sqlalchemy>=2.0.46",
 ]
+
+[project.scripts]
+start-app = "accounts.main:start_app"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -22,6 +37,13 @@ env_override_existing_values = 1
 env_files = [
     "src/.env"
 ]
+
+[tool.uv]
+package = true
+compile-bytecode = true
+
+[tool.uv.build-backend]
+source-include = ["tests/**"]
 
 [dependency-groups]
 dev = [

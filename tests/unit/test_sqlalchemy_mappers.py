@@ -2,20 +2,20 @@ import pytest
 from decimal import Decimal
 from uuid import uuid4
 
-from adapters.sqlalchemy.mappers import (
-    AccountMapper,
-    PaymentEntryMapper,
-)
-from adapters.sqlalchemy.models import (
-    Account as SQLAlchemyAccount,
-    PaymentEntry as SQLAlchemyPaymentEntry,
-)
-from domain.models import (
+from accounts.domain.models import (
     Money,
     AccountId,
     PaymentEntryId,
     UserId,
     Account,
+)
+from accounts.adapters.sqlalchemy.mappers import (
+    AccountMapper,
+    PaymentEntryMapper,
+)
+from accounts.adapters.sqlalchemy.models import (
+    Account as SQLAlchemyAccount,
+    PaymentEntry as SQLAlchemyPaymentEntry,
 )
 
 

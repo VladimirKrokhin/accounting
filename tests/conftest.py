@@ -6,12 +6,12 @@ from sqlalchemy.orm import sessionmaker, clear_mappers
 from tenacity import retry, stop_after_delay
 from sanic_testing import TestManager
 
-from adapters.sqlalchemy.models import Base
-from bootstrap import bootstrap
-from service_layer.unit_of_work import (
+from accounts.adapters.sqlalchemy.models import Base
+from accounts.bootstrap import bootstrap
+from accounts.service_layer.unit_of_work import (
     FakeUnitOfWork,
     SqlAlchemyUnitOfWork,
-)  # Импортируйте ваш UoW
+)
 
 
 def get_postgres_uri():
@@ -48,7 +48,7 @@ def postgres_db():
 
 @pytest.fixture(scope="session")
 def sanic_app(postgres_db):
-    from entrypoints.sanic_app import app, init_app
+    from accounts.entrypoints.sanic_app import app, init_app
 
     session_factory = sessionmaker(bind=postgres_db)
     test_uow = SqlAlchemyUnitOfWork(session_factory)

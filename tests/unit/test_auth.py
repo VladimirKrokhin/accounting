@@ -1,27 +1,23 @@
 import pytest
 from datetime import timedelta
-from adapters.repository import FakeUserRepository
-from domain.types import UserId
-from domain.exceptions import (
+
+from accounts.domain.types import UserId
+from accounts.adapters.repository import FakeUserRepository
+from accounts.adapters.auth import (
+    AuthDTO,
     AuthentificationError,
     ExpiredSignatureError,
+    ExtractPayloadFromTokenDTO,
     InvalidTokenError,
-)
-from dtos import UserDTO, UserType
-from service_layer.unit_of_work import FakeUnitOfWork
-
-# Предполагаем, что ваши функции лежат в service_layer/auth.py
-from adapters.auth import (
-    AuthDTO,
-    AuthentificateDTO,
     check_password_by_hash,
     generate_password_hash,
     authentificate,
     generate_token,
     extract_auth_payload_from_token,
-    ExtractPayloadFromTokenDTO,
     is_user_type_in,
 )
+from accounts.dtos import UserDTO, UserType
+from accounts.service_layer.unit_of_work import FakeUnitOfWork
 
 
 @pytest.fixture

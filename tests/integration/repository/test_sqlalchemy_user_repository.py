@@ -2,11 +2,11 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from dtos import UserDTO, UserType
-from domain.models import UserId
-from domain.exceptions import UserDoesNotExists
-from adapters.repository import SQLAlchemyUserRepository
-from adapters.sqlalchemy.models import Base
+from accounts.dtos import UserDTO, UserType
+from accounts.domain.models import UserId
+from accounts.domain.exceptions import UserDoesNotExists
+from accounts.adapters.repository import SQLAlchemyUserRepository
+from accounts.adapters.sqlalchemy.models import Base
 
 
 @pytest.fixture(scope="function")

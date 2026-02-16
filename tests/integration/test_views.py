@@ -1,14 +1,23 @@
 from decimal import Decimal
+from uuid import uuid4
 import pytest
-from adapters.repository import FakeAccountRepository, FakeUserRepository
-from bootstrap import bootstrap
-from domain.models import Account, PaymentEntry, UserId, AccountId
-from domain.exceptions import UserDoesNotExists
-from domain.types import Money, TransactionId, next_payment_entry_id
-from dtos import UserDTO, UserType
-from service_layer.message_bus import MessageBus
-from service_layer.unit_of_work import FakeUnitOfWork
-from views import get_user_accounts, get_user_data, get_user_payments, get_users
+
+
+from accounts.domain.models import Account, PaymentEntry, UserId, AccountId
+from accounts.domain.exceptions import UserDoesNotExists
+from accounts.domain.types import Money, TransactionId, next_payment_entry_id
+from accounts.dtos import UserDTO, UserType
+from accounts.adapters.repository import FakeAccountRepository, FakeUserRepository
+from accounts.views import (
+    get_user_accounts,
+    get_user_data,
+    get_user_payments,
+    get_users,
+)
+from accounts.service_layer.unit_of_work import FakeUnitOfWork
+from accounts.bootstrap import bootstrap
+
+tr_id = TransactionId(uuid4())
 
 
 @pytest.fixture
@@ -28,7 +37,7 @@ def setup_data():
 
     # Создаем счет и платеж для этого пользователя
     payment = PaymentEntry(
-        transaction_id=TransactionId("tx1"),
+        transaction_id=tr_id,
         amount=Money(Decimal(100)),
         id_=next_payment_entry_id(),
         account_id=AccountId(1),
@@ -79,7 +88,7 @@ def test_get_user_payments_success(setup_data):
     payments = get_user_payments(user_id, account_repo, user_repo)
 
     assert len(payments) == 1
-    assert payments[0].transaction_id == "tx1"
+    assert payments[0].transaction_id == tr_id
 
 
 ## --- Тесты get_user_data ---

@@ -1,17 +1,17 @@
 from decimal import Decimal
 from uuid import UUID
 
-from domain.models import Account, AccountId, Money, TransactionId, UserId
-from domain.messages import HandlePaymentSystemTransaction
-from adapters.repository import (
+from accounts.dtos import UserDTO, UserType
+from accounts.domain.models import Account, AccountId, Money, TransactionId, UserId
+from accounts.domain.messages import HandlePaymentSystemTransaction
+from accounts.adapters.repository import (
     FakeAccountRepository,
     FakeUserRepository,
 )
-from dtos import UserDTO, UserType
-from service_layer.handlers.payment_system import (
+from accounts.service_layer.handlers.payment_system import (
     process_payment_system_transaction,
 )
-from service_layer.unit_of_work import FakeUnitOfWork
+from accounts.service_layer.unit_of_work import FakeUnitOfWork
 
 
 def test_process_payment_system_transaction_success_user_has_account():

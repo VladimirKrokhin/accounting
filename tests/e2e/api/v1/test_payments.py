@@ -1,6 +1,7 @@
-from adapters.auth import generate_password_hash
-from dtos import UserDTO, UserType
-from domain.types import UserId
+from accounts.adapters.auth import generate_password_hash
+from accounts.dtos import UserDTO, UserType
+from accounts.domain.types import UserId
+
 from e2e.api.v1.api_client import get_user_accounts, post_auth, post_transaction
 
 

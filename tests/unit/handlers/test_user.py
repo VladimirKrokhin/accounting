@@ -1,15 +1,15 @@
 import pytest
-from domain.messages import CreateUser, DeleteUser, UpdateUser
-from domain.models import UserId
-from domain.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
-from dtos import UserDTO, UserType
-from adapters.repository import FakeUserRepository
-from service_layer.handlers.user import (
+
+from accounts.dtos import UserDTO, UserType
+from accounts.domain.messages import CreateUser, DeleteUser, UpdateUser
+from accounts.domain.models import UserId
+from accounts.domain.exceptions import UserIsAlreadyExistsError, UserDoesNotExists
+from accounts.service_layer.handlers.user import (
     create_user,
     update_user,
     delete_user,
 )
-from service_layer.unit_of_work import FakeUnitOfWork
+from accounts.service_layer.unit_of_work import FakeUnitOfWork
 
 
 # Фикстура репозитория для единицы работы
