@@ -28,7 +28,7 @@ async def protected(request: Request):
             status=StatusCodes.ERROR_UNAUTHORIZED,
         )
 
-    app = Sanic.get_app("accounts")
+    app = request.app
 
     try:
         raw_token = token.split(" ")[1]
@@ -49,7 +49,7 @@ async def protected(request: Request):
         )
 
 
-def get_user_type_required_middleware(allowed_user_types: list[UserType]):
+async def get_user_type_required_middleware(allowed_user_types: list[UserType]):
     """Фабрика для миддлварей по типам пользователей."""
 
     async def middleware(request: Request):
@@ -64,7 +64,7 @@ def get_user_type_required_middleware(allowed_user_types: list[UserType]):
                 status=StatusCodes.ERROR_UNAUTHORIZED,
             )
 
-        is_user_type_in_allowed = is_user_type_in(
+        is_user_type_in_allowed = await is_user_type_in(
             user_id=user_id,
             user_types=allowed_user_types,
             user_repository=user_repository,

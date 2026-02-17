@@ -29,10 +29,10 @@ class CreateUser:
     def __init__(self, uow: AbstractUnitOfWork) -> None:
         self.uow = uow
 
-    def execute(self, dto: CreateUserDTO) -> int:
+    async def execute(self, dto: CreateUserDTO) -> int:
         with self.uow as uow:
             user_repository = uow.users
-            is_user_exists = user_repository.is_user_exists_by_email(dto.email)
+            is_user_exists = await user_repository.does_user_exist_by_email(dto.email)
 
             if is_user_exists:
                 raise UserIsAlreadyExistsError(
@@ -47,7 +47,9 @@ class CreateUser:
                 password_hash=password_hash,
                 user_type=UserType.USER,
             )
-            user_id = user_repository.save_user(user)
+            user_id = await user_repository.save_user(user)
+
+            uow.commit()
 
         return user_id
 
@@ -56,17 +58,17 @@ class UpdateUser:
     def __init__(self, uow: AbstractUnitOfWork) -> None:
         self.uow = uow
 
-    def execute(self, dto: UpdateUserDTO) -> UserId:
+    async def execute(self, dto: UpdateUserDTO) -> UserId:
         with self.uow as uow:
             user_repository = uow.users
-            is_user_exists = user_repository.is_user_exists(dto.user_id)
+            is_user_exists = await user_repository.does_user_exist(dto.user_id)
 
             if not is_user_exists:
                 raise UserDoesNotExists(
                     "Пользователь с указанным user_id не существует"
                 )
 
-            users_with_exact_email = user_repository.get_users_by_email(dto.email)
+            users_with_exact_email = await user_repository.get_users_by_email(dto.email)
             for user in users_with_exact_email:
                 if user.user_id != dto.user_id:
                     raise UserIsAlreadyExistsError(
@@ -82,7 +84,9 @@ class UpdateUser:
                 password_hash=password_hash,
                 user_type=UserType.USER,
             )
-            user_id = user_repository.save_user(user)
+            user_id = await user_repository.save_user(user)
+
+            uow.commit()
 
         return user_id
 
@@ -91,15 +95,17 @@ class DeleteUser:
     def __init__(self, uow: AbstractUnitOfWork) -> None:
         self.uow = uow
 
-    def execute(self, dto: DeleteUserDTO) -> None:
+    async def execute(self, dto: DeleteUserDTO) -> None:
         user_id = dto.user_id
         with self.uow as uow:
             user_repository = uow.users
-            is_user_exists = user_repository.is_user_exists(user_id)
+            is_user_exists = await user_repository.does_user_exist(user_id)
 
             if not is_user_exists:
                 raise UserDoesNotExists(
                     "Пользователь с указанным user_id не существует"
                 )
 
-            user_repository.delete_user(user_id)
+            await user_repository.delete_user(user_id)
+
+            uow.commit()

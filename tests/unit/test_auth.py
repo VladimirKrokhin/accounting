@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from accounts.config import AuthConfig
 from accounts.core.types import UserId
-from accounts.adapters.repository import FakeUserRepository
 from accounts.adapters.auth import (
     AuthDTO,
     AuthentificationError,
@@ -18,7 +17,8 @@ from accounts.adapters.auth import (
     is_user_type_in,
 )
 from accounts.dtos import UserDTO, UserType
-from accounts.service_layer.unit_of_work import FakeUnitOfWork
+
+from fakes import FakeUserRepository, FakeUnitOfWork
 
 
 @pytest.fixture
@@ -36,29 +36,32 @@ def uow_with_user():
         password_hash=generate_password_hash("correct_password"),
     )
     # Инициализируем FakeUnitOfWork с предзаполненным репозиторием
-    return FakeUnitOfWork(users=FakeUserRepository({UserId(1): user}, user_serial=1))
+    return FakeUnitOfWork(users=FakeUserRepository(user))
 
 
-def test_authentificate_success(uow_with_user):
+@pytest.mark.asyncio
+async def test_authentificate_success(uow_with_user):
     dto = AuthDTO(email="test@example.com", password="correct_password")
-    user = authentificate(dto, uow_with_user)
+    user = await authentificate(dto, uow_with_user)
 
     assert user.email == "test@example.com"
     assert user.user_id == 1
 
 
-def test_authentificate_fail_wrong_password(uow_with_user):
+@pytest.mark.asyncio
+async def test_authentificate_fail_wrong_password(uow_with_user):
     dto = AuthDTO(email="test@example.com", password="wrong_password")
 
     with pytest.raises(AuthentificationError):
-        authentificate(dto, uow_with_user)
+        await authentificate(dto, uow_with_user)
 
 
-def test_authentificate_fail_user_not_found(uow_with_user):
+@pytest.mark.asyncio
+async def test_authentificate_fail_user_not_found(uow_with_user):
     dto = AuthDTO(email="unknown@example.com", password="any_password")
 
     with pytest.raises(AuthentificationError):
-        authentificate(dto, uow_with_user)
+        await authentificate(dto, uow_with_user)
 
 
 def test_generate_and_extract_token_success(auth_config):
@@ -162,8 +165,9 @@ def test_password_hashing():
     assert check_password_by_hash("wrong", hashed) is False
 
 
-def test_is_user_type_in_check(uow_with_user):
+@pytest.mark.asyncio
+async def test_is_user_type_in_check(uow_with_user):
     repo = uow_with_user.users
 
-    assert is_user_type_in(UserId(1), [UserType.USER], repo) is True
-    assert is_user_type_in(UserId(1), [UserType.ADMIN], repo) is False
+    assert await is_user_type_in(UserId(1), [UserType.USER], repo) is True
+    assert await is_user_type_in(UserId(1), [UserType.ADMIN], repo) is False

@@ -33,7 +33,7 @@ async def handle_auth(request: Request):
             expiration_time=app.config.AUTH_EXPIRATION_TIME,
             encryption_algorithm=app.config.AUTH_ENCRYPTION_ALGORITHM,
         )
-        auth_success_dto: AuthSuccessDTO = authentificate_and_return_access_token(
+        auth_success_dto: AuthSuccessDTO = await authentificate_and_return_access_token(
             dto=dto, config=config, uow=uow
         )
     except AuthError:

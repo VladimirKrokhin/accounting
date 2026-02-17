@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from accounts.dtos import UserDTO
 from accounts.core.types import AccountId, UserId, TransactionId
 from accounts.core.entities import Account, PaymentEntry
-from accounts.core.exceptions import UserDoesNotExists
+from accounts.core.exceptions import AccountDoesNotExists, UserDoesNotExists
 
 from accounts.adapters.sqlalchemy.models import User
 from accounts.adapters.sqlalchemy.mappers import (
@@ -19,157 +19,122 @@ from accounts.adapters.sqlalchemy.mappers import (
 
 __all__ = [
     "AbstractAccountRepository",
-    "FakeAccountRepository",
     "SQLAlchemyAccountRepository",
     "AbstractUserRepository",
-    "FakeUserRepository",
     "SQLAlchemyUserRepository",
 ]
 
 
 class AbstractAccountRepository(metaclass=ABCMeta):
     """
-    Репозитория для счетов пользователей.
+    Abstract Repository for User's accounts
     """
 
     @abstractmethod
-    def is_payment_entry_exists_by_transaction_id(
+    async def does_payment_entry_exist_by_transaction_id(
         self, transaction_id: TransactionId
     ) -> bool:
-        """Существует ли платеж с указанным transaction_id?"""
+        """Does a PaymentEntry exists with specified transaction_id?
+        :param transaction_id: Entry's transaction id
+        :type transaction_id: TransactionId
+
+        :return: True, if exists, else False
+        :rtype: bool
+        """
+
         raise NotImplementedError
 
     @abstractmethod
-    def is_user_has_account(self, user_id: UserId, account_id: AccountId) -> bool:
-        """
-        Есть ли счет у пользователя?
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def save_account(self, account: Account) -> AccountId:
-        """
-        Сохранить счет.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def is_account_exists(self, account_id: AccountId) -> bool:
-        """
-        Существует ли счет?
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_account_by_id(self, account_id: AccountId) -> Account:
-        """
-        Получить счет по id.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_user_accounts(self, user_id: UserId) -> list[Account]:
-        """Получить список счетов пользователя."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
-        """Получить список платежей пользователя."""
-        raise NotImplementedError
-
-
-class FakeAccountRepository(AbstractAccountRepository):
-    """Подставной репозиторий счетов пользователей для тестов."""
-
-    def __init__(
-        self,
-        storage: dict[AccountId, Account] | None = None,
-        account_serial: AccountId = AccountId(0),
-    ) -> None:
-
-        if storage is None:
-            storage = {}
-
-        self.storage: dict[AccountId, Account] = storage
-        self.account_serial: int = account_serial
-
-    def is_payment_entry_exists_by_transaction_id(
-        self, transaction_id: TransactionId
+    async def does_user_have_account(
+        self, user_id: UserId, account_id: AccountId
     ) -> bool:
-        for account in self.storage.values():
-            for entry in account.payments:
-                if entry.transaction_id == transaction_id:
-                    return True
+        """Does an User have an Account?
+        :param user_id: User's ID
+        :type user_id: UserId
+        :param account_id: Account's ID
+        :type account_id: AccountId
 
-        return False
+        :return: True if has else False
+        :rtype: bool
+        """
+        raise NotImplementedError
 
-    def is_user_has_account(self, user_id: UserId, account_id: AccountId):
-        for account in self.storage.values():
-            if account.id_ == account_id and account.user_id == user_id:
-                return True
+    @abstractmethod
+    async def save_account(self, account: Account) -> AccountId:
+        """Save account.
+        :param account: Account to save
+        :type account: Account
 
-        return False
+        :return: Account's ID
+        :rtype: AccountId
+        """
+        raise NotImplementedError
 
-    def save_account(self, account: Account) -> AccountId:
-        if account.id_ is None:
-            self.account_serial += 1
-            account.id_ = AccountId(self.account_serial)
-            for entry in account.payments:
-                entry.account_id = account.id_
-        elif not self.is_account_exists(account.id_):
-            self.account_serial = account.id_ + 1
+    @abstractmethod
+    async def does_account_exist(self, account_id: AccountId) -> bool:
+        """Does Account exists?
+        :param account_id: Account's ID
+        :type account_id: AccountId
 
-        self.storage[account.id_] = account
+        :return: True if exists else False
+        :rtype: bool
+        """
+        raise NotImplementedError
 
-        return account.id_
+    @abstractmethod
+    async def get_account_by_id(self, account_id: AccountId) -> Account:
+        """Get Account by ID.
+        :param account_id: Account's ID
+        :type account_id: AccountId
 
-    def is_account_exists(self, account_id: AccountId) -> bool:
-        return account_id in self.storage
+        :raises AccountDoesNotExists: if Account with specific ID does not exists
 
-    def get_account_by_id(self, account_id: AccountId) -> Account:
-        if not self.is_account_exists(account_id):
-            raise ValueError("Указанный счет не существует")
+        :return: Account, if exists
+        :rtype: Account
+        """
+        raise NotImplementedError
 
-        return self.storage[account_id]
+    @abstractmethod
+    async def get_user_accounts(self, user_id: UserId) -> list[Account]:
+        """Get User's accounts list.
+        :param user_id: User's ID
+        :type user_id: UserId
 
-    def get_user_accounts(self, user_id: UserId) -> list[Account]:
-        user_accounts = []
+        :return: list of Accounts, owned by User
+        :rtype: list[Account]"""
+        raise NotImplementedError
 
-        for account in self.storage.values():
-            if account.user_id == user_id:
-                user_accounts.append(account)
+    @abstractmethod
+    async def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
+        """Get User's payments list.
+        :param user_id: User's ID
+        :type user_id: UserId
 
-        return user_accounts
-
-    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
-        user_accounts = self.get_user_accounts(user_id)
-        user_payments = []
-
-        for account in user_accounts:
-            user_payments.extend(account.payments)
-
-        return user_payments
+        :return: User's PaymentEntries list
+        :rtype: list[PaymentEntry]
+        """
+        raise NotImplementedError
 
 
 class SQLAlchemyAccountRepository(AbstractAccountRepository):
     """
-    Репозиторий счетов для SQLAlchemy.
+    SQLAlchemy Account Repository.
     """
 
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def is_payment_entry_exists_by_transaction_id(
+    async def does_payment_entry_exist_by_transaction_id(
         self, transaction_id: TransactionId
     ) -> bool:
-        """Проверяет существование транзакции в таблице платежей."""
         stmt = select(
             exists().where(SQLAlchemyPaymentEntry.transaction_id == transaction_id)
         )
         return self._session.scalar(stmt) or False
 
-    def is_user_has_account(self, user_id: UserId, account_id: AccountId) -> bool:
-        """Проверяет принадлежность счета пользователю."""
+    async def does_user_have_account(
+        self, user_id: UserId, account_id: AccountId
+    ) -> bool:
         stmt = select(
             exists().where(
                 SQLAlchemyAccount.id == account_id, SQLAlchemyAccount.user_id == user_id
@@ -177,24 +142,19 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
         )
         return self._session.scalar(stmt) or False
 
-    def save_account(self, account: Account) -> AccountId:
+    async def save_account(self, account: Account) -> AccountId:
         orm_account = AccountMapper.to_orm(account)
         is_new_account = orm_account.id is None
 
         if not is_new_account:
-            # Обновляем существующую запись
             orm_account = self._session.merge(orm_account)
         else:
-            # Добавляем новую запись
             self._session.add(orm_account)
 
-        # Синхронизируем с БД, чтобы получить сгенерированный ID (если это был INSERT)
         self._session.flush()
 
-        # Теперь id гарантированно существует
         account_id = AccountId(orm_account.id)
 
-        # Если аккаунт был новый, обновляем доменную модель и её связи
         if is_new_account:
             account.id_ = account_id
             for payment in account.payments:
@@ -202,19 +162,19 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
         return account_id
 
-    def is_account_exists(self, account_id: AccountId) -> bool:
+    async def does_account_exist(self, account_id: AccountId) -> bool:
         stmt = select(exists().where(SQLAlchemyAccount.id == account_id))
         return self._session.scalar(stmt) or False
 
-    def get_account_by_id(self, account_id: AccountId) -> Account:
+    async def get_account_by_id(self, account_id: AccountId) -> Account:
         orm_account = self._session.get(SQLAlchemyAccount, account_id)
 
         if orm_account is None:
-            raise ValueError(f"Счет с ID {account_id} не найден")
+            raise AccountDoesNotExists(f"Account with id={account_id} does not exists")
 
         return AccountMapper.to_domain(orm_account)
 
-    def get_user_accounts(self, user_id: UserId) -> list[Account]:
+    async def get_user_accounts(self, user_id: UserId) -> list[Account]:
         stmt = select(SQLAlchemyAccount).where(SQLAlchemyAccount.user_id == user_id)
 
         orm_accounts = self._session.scalars(stmt).all()
@@ -224,7 +184,7 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
         return accounts
 
-    def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
+    async def get_user_payments(self, user_id: UserId) -> list[PaymentEntry]:
         stmt = (
             select(SQLAlchemyPaymentEntry)
             .join(SQLAlchemyAccount)
@@ -240,125 +200,65 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
 
 class AbstractUserRepository(metaclass=ABCMeta):
+    """Abstract User Repository."""
+
     @abstractmethod
-    def is_user_exists(self, user_id: UserId) -> bool:
+    async def does_user_exist(self, user_id: UserId) -> bool:
         """Существует ли пользователь?"""
         raise NotImplementedError
 
     @abstractmethod
-    def is_user_exists_by_email(self, email: str) -> bool:
+    async def does_user_exist_by_email(self, email: str) -> bool:
         """Существует ли пользователь с указанной почтой?"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_user(self, user_id: UserId) -> UserDTO:
-        """Получить пользователя."""
+    async def get_user(self, user_id: UserId) -> UserDTO:
+        """Получить пользователя.
+
+        :raises UserDoesNotExists: if User with specified user_id does not exist
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def save_user(self, user: UserDTO) -> UserId:
+    async def save_user(self, user: UserDTO) -> UserId:
         """Сохранить пользователя"""
         raise NotImplementedError
 
     @abstractmethod
-    def delete_user(self, user_id: UserId) -> None:
+    async def delete_user(self, user_id: UserId) -> None:
         """Удалить пользователя"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_users(self) -> list[UserDTO]:
+    async def get_users(self) -> list[UserDTO]:
         """Получить список пользователей"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_users_by_email(self, email: str) -> list[UserDTO]:
+    async def get_users_by_email(self, email: str) -> list[UserDTO]:
         raise NotImplementedError
-
-
-class FakeUserRepository(AbstractUserRepository):
-    """Подставной репозиторий со пользователями."""
-
-    def __init__(
-        self, storage: dict[UserId, UserDTO] | None = None, user_serial: int = 0
-    ) -> None:
-        if storage is None:
-            storage = {}
-
-        self.user_serial = user_serial
-        self.storage = storage
-
-    def is_user_exists(self, user_id: UserId) -> bool:
-        for user in self.storage.values():
-            if user.user_id == user_id:
-                return True
-
-        return False
-
-    def is_user_exists_by_email(self, email: str) -> bool:
-        for user in self.storage.values():
-            if user.email == email:
-                return True
-
-        return False
-
-    def get_user(self, user_id: UserId) -> UserDTO:
-        if not self.is_user_exists(user_id):
-            raise ValueError("Указанный пользователь не существует")
-
-        user = self.storage[user_id]
-        return user
-
-    def save_user(self, user: UserDTO) -> UserId:
-        if user.user_id is None:
-            self.user_serial += 1
-            user.user_id = UserId(self.user_serial)
-
-        elif user.user_id not in self.storage:
-            if isinstance(user.user_id, int) and user.user_id > self.user_serial:
-                self.user_serial = user.user_id
-
-        self.storage[user.user_id] = user
-
-        return user.user_id
-
-    def delete_user(self, user_id: UserId) -> None:
-        if not self.is_user_exists(user_id):
-            raise UserDoesNotExists("Указанный пользователь не существует")
-
-        self.storage.pop(user_id)
-
-    def get_users(self) -> list[UserDTO]:
-        users = list(self.storage.values())
-        return users
-
-    def get_users_by_email(self, email: str) -> list[UserDTO]:
-        users = []
-        for user in self.storage.values():
-            if user.email == email:
-                users.append(user)
-
-        return users
 
 
 class SQLAlchemyUserRepository(AbstractUserRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def is_user_exists(self, user_id: UserId) -> bool:
+    async def does_user_exist(self, user_id: UserId) -> bool:
         stmt = select(exists().where(User.id == user_id))
         return self._session.scalar(stmt) or False
 
-    def is_user_exists_by_email(self, email: str) -> bool:
+    async def does_user_exist_by_email(self, email: str) -> bool:
         stmt = select(exists().where(User.email_address == email))
         return self._session.scalar(stmt) or False
 
-    def get_user(self, user_id: UserId) -> UserDTO:
+    async def get_user(self, user_id: UserId) -> UserDTO:
         orm_user = self._session.get(User, user_id)
         if not orm_user:
-            raise UserDoesNotExists(f"User {user_id} not found")
+            raise UserDoesNotExists(f"Cannot get User {user_id}: not found")
         return UserMapper.to_dto(orm_user)
 
-    def save_user(self, user: UserDTO) -> UserId:
+    async def save_user(self, user: UserDTO) -> UserId:
         orm_user = UserMapper.to_orm(user)
 
         if user.user_id is not None:
@@ -375,20 +275,20 @@ class SQLAlchemyUserRepository(AbstractUserRepository):
         user.user_id = generated_id
         return generated_id
 
-    def delete_user(self, user_id: UserId) -> None:
-        if not self.is_user_exists(user_id):
+    async def delete_user(self, user_id: UserId) -> None:
+        if not await self.does_user_exist(user_id):
             raise UserDoesNotExists(f"Cannot delete: User {user_id} not found")
 
         stmt = delete(User).where(User.id == user_id)
         self._session.execute(stmt)
         self._session.flush()
 
-    def get_users(self) -> list[UserDTO]:
+    async def get_users(self) -> list[UserDTO]:
         stmt = select(User)
         result = self._session.scalars(stmt).all()
         return [UserMapper.to_dto(u) for u in result]
 
-    def get_users_by_email(self, email: str) -> list[UserDTO]:
+    async def get_users_by_email(self, email: str) -> list[UserDTO]:
         stmt = select(User).where(User.email_address == email)
         result = self._session.scalars(stmt).all()
         return [UserMapper.to_dto(u) for u in result]

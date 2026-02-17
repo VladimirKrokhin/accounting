@@ -4,10 +4,8 @@ from accounts.adapters.sqlalchemy.models import Base
 from accounts.config import load_config
 from accounts.dtos import UserDTO, UserType
 from accounts.core.entities import UserId
-from accounts.adapters.repository import FakeAccountRepository, FakeUserRepository
 from accounts.service_layer.unit_of_work import (
     DEFAULT_SQLALCHEMY_ENGINE,
-    FakeUnitOfWork,
     SqlAlchemyUnitOfWork,
 )
 from accounts.entrypoints.sanic_app.api import api

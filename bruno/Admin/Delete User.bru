@@ -1,0 +1,26 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base-url}}/api/v1/users/:user_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id: 13
+}
+
+vars:pre-request {
+  user_email: new@user.org
+  user_full_name: New User
+  user_password: 1234
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

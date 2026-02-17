@@ -6,13 +6,11 @@ from sqlalchemy.orm import sessionmaker
 from accounts.adapters.repository import (
     AbstractAccountRepository,
     AbstractUserRepository,
-    FakeAccountRepository,
-    FakeUserRepository,
     SQLAlchemyAccountRepository,
     SQLAlchemyUserRepository,
 )
 
-__all__ = ["AbstractUnitOfWork", "FakeUnitOfWork", "SqlAlchemyUnitOfWork"]
+__all__ = ["AbstractUnitOfWork", "SqlAlchemyUnitOfWork"]
 
 
 class AbstractUnitOfWork(abc.ABC):
@@ -35,29 +33,6 @@ class AbstractUnitOfWork(abc.ABC):
     @abc.abstractmethod
     def rollback(self):
         raise NotImplementedError
-
-
-class FakeUnitOfWork(AbstractUnitOfWork):
-    def __init__(
-        self,
-        accounts: FakeAccountRepository | None = None,
-        users: FakeUserRepository | None = None,
-    ):
-        if accounts is None:
-            accounts = FakeAccountRepository()
-
-        if users is None:
-            users = FakeUserRepository()
-
-        self.accounts = accounts
-        self.users = users
-        self.committed = False
-
-    def _commit(self):
-        self.committed = True
-
-    def rollback(self):
-        pass
 
 
 def get_postgres_uri():

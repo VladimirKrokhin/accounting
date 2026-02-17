@@ -60,7 +60,7 @@ def validate_transaction_signature(
         raise SignatureIsNotValid
 
 
-def add_new_transaction(
+async def add_new_transaction(
     account_repository: AbstractAccountRepository,
     account: Account,
     transaction_id: TransactionId,
@@ -70,7 +70,7 @@ def add_new_transaction(
     Добавить новую транзакцию к счету. Не начисляет средства на баланс.
     """
 
-    is_duplicate = account_repository.is_payment_entry_exists_by_transaction_id(
+    is_duplicate = await account_repository.does_payment_entry_exist_by_transaction_id(
         transaction_id=transaction_id
     )
 
@@ -82,7 +82,7 @@ def add_new_transaction(
         amount=amount,
     )
 
-    acc_id = account_repository.save_account(account)
+    acc_id = await account_repository.save_account(account)
 
     return (acc_id, pe_id)
 
@@ -132,14 +132,14 @@ class ProcessPaymentSystemWebHook:
             )
 
             # Проверим, существует ли пользователь.
-            is_user_exists = user_repository.is_user_exists(user_id)
+            is_user_exists = await user_repository.does_user_exist(user_id)
             if not is_user_exists:
                 raise UserDoesNotExists(
                     "Пользователь с указанным user_id не существует"
                 )
 
             # 2. Проверить существует ли у пользователя такой счет - если нет, его необходимо создать
-            is_user_has_account: bool = account_repository.is_user_has_account(
+            is_user_has_account: bool = await account_repository.does_user_have_account(
                 user_id=user_id, account_id=account_id
             )
 
@@ -149,14 +149,14 @@ class ProcessPaymentSystemWebHook:
                     balance=Money(Decimal(0)),
                     user_id=user_id,
                 )
-                account_id = account_repository.save_account(account)
+                account_id = await account_repository.save_account(account)
 
             # Был ли создан счет?
             is_account_created = not is_user_has_account
 
             # 3. Сохранить транзакцию в базе данных
-            account = account_repository.get_account_by_id(account_id=account_id)
-            account_id, pe_id = add_new_transaction(
+            account = await account_repository.get_account_by_id(account_id=account_id)
+            account_id, pe_id = await add_new_transaction(
                 account_repository=account_repository,
                 account=account,
                 transaction_id=transaction_id,
@@ -164,9 +164,9 @@ class ProcessPaymentSystemWebHook:
             )
 
             # 4. Начислить сумму транзакции на счет пользователя
-            account = account_repository.get_account_by_id(account_id)
+            account = await account_repository.get_account_by_id(account_id)
             account.accrue_payment_entry(pe_id)
-            account_id = account_repository.save_account(account)
+            account_id = await account_repository.save_account(account)
 
             uow.commit()
 

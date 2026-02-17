@@ -14,14 +14,13 @@ from accounts.core.types import (
 
 from accounts.core.exceptions import UserDoesNotExists
 from accounts.dtos import UserDTO, UserType
-from accounts.adapters.repository import FakeAccountRepository, FakeUserRepository
 from accounts.views import (
     get_user_accounts,
     get_user_data,
     get_user_payments,
     get_users,
 )
-from accounts.service_layer.unit_of_work import FakeUnitOfWork
+from fakes import FakeAccountRepository, FakeUserRepository, FakeUnitOfWork
 
 tr_id = TransactionId(uuid4())
 
@@ -39,7 +38,7 @@ def setup_data():
         email="alice@in.wondlerland",
         password_hash="sadfadf",
     )
-    user_repo = FakeUserRepository({user_id: user}, 1)
+    user_repo = FakeUserRepository(user)
 
     # Создаем счет и платеж для этого пользователя
     payment = PaymentEntry(
@@ -48,11 +47,9 @@ def setup_data():
         id_=next_payment_entry_id(),
         account_id=AccountId(1),
     )
-    account = Account(id_=AccountId(1), user_id=user_id, payments=[payment])
+    account = Account(id_=AccountId(1), user_id=user_id, payments={payment})
 
-    account_repo = FakeAccountRepository({account.id_: account}, 1)
-    account_repo.save_account(account)
-
+    account_repo = FakeAccountRepository(account)
     uow = FakeUnitOfWork(users=user_repo, accounts=account_repo)
 
     return user_id, uow
@@ -61,33 +58,33 @@ def setup_data():
 ## --- Тесты get_user_accounts ---
 
 
-def test_get_user_accounts_returns_correct_list(setup_data):
+@pytest.mark.asyncio
+async def test_get_user_accounts_returns_correct_list(setup_data):
     user_id, uow = setup_data
-    account_repo, user_repo = uow.accounts, uow.users
 
-    accounts = get_user_accounts(user_id, account_repo, user_repo)
+    accounts = await get_user_accounts(user_id, uow)
 
     assert len(accounts) == 1
     assert accounts[0].user_id == user_id
     assert accounts[0].id_ == AccountId(1)
 
 
-def test_get_user_accounts_raises_if_user_missing(setup_data):
+@pytest.mark.asyncio
+async def test_get_user_accounts_raises_if_user_missing(setup_data):
     _, uow = setup_data
-    account_repo, user_repo = uow.accounts, uow.users
 
     with pytest.raises(UserDoesNotExists):
-        get_user_accounts(UserId(999), account_repo, user_repo)
+        await get_user_accounts(UserId(999), uow)
 
 
 ## --- Тесты get_user_payments ---
 
 
-def test_get_user_payments_success(setup_data):
+@pytest.mark.asyncio
+async def test_get_user_payments_success(setup_data):
     user_id, uow = setup_data
-    account_repo, user_repo = uow.accounts, uow.users
 
-    payments = get_user_payments(user_id, account_repo, user_repo)
+    payments = await get_user_payments(user_id, uow)
 
     assert len(payments) == 1
     assert payments[0].transaction_id == tr_id
@@ -96,10 +93,10 @@ def test_get_user_payments_success(setup_data):
 ## --- Тесты get_user_data ---
 
 
-def test_get_user_data_returns_dto(setup_data):
+@pytest.mark.asyncio
+async def test_get_user_data_returns_dto(setup_data):
     user_id, uow = setup_data
-    user_repo = uow.users
-    user_dto = get_user_data(user_id, user_repo)
+    user_dto = await get_user_data(user_id, uow)
 
     assert user_dto.user_id == user_id
     assert user_dto.full_name == "Alice"
@@ -108,11 +105,11 @@ def test_get_user_data_returns_dto(setup_data):
 ## --- Тесты get_users ---
 
 
-def test_get_users_returns_all(setup_data):
+@pytest.mark.asyncio
+async def test_get_users_returns_all(setup_data):
     _, uow = setup_data
-    user_repo = uow.users
 
-    all_users = get_users(user_repo)
+    all_users = await get_users(uow)
 
     assert len(all_users) == 1
     assert all_users[0].full_name == "Alice"

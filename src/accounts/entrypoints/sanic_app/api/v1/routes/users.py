@@ -50,8 +50,9 @@ async def handle_me(request: Request) -> HTTPResponse:
     uow: AbstractUnitOfWork = app.ctx.uow
     current_user_id = request.ctx.user_id
 
-    user_dto: UserDTO = get_user_data_view(
-        user_id=current_user_id, user_repository=uow.users
+    user_dto: UserDTO = await get_user_data_view(
+        user_id=current_user_id,
+        uow=uow,
     )
 
     json_body = {"user": dictify_user(user_dto)}
@@ -67,10 +68,9 @@ async def get_current_user_accounts(request: Request) -> HTTPResponse:
     current_user_id = request.ctx.user_id
 
     try:
-        user_accounts: list[Account] = get_user_accounts_view(
+        user_accounts: list[Account] = await get_user_accounts_view(
             user_id=current_user_id,
-            account_repository=uow.accounts,
-            user_repository=uow.users,
+            uow=uow,
         )
     except UserDoesNotExists:
         return json(
@@ -91,15 +91,14 @@ async def get_current_user_accounts(request: Request) -> HTTPResponse:
 # Получить список своих платежей
 @user_bp.get("/me/payments")
 async def get_current_user_payments(request: Request) -> HTTPResponse:
-    app = Sanic.get_app("accounts")
+    app = request.app
     uow: AbstractUnitOfWork = app.ctx.uow
     current_user_id = request.ctx.user_id
 
     try:
-        user_payments: list[PaymentEntry] = get_user_payments_view(
+        user_payments: list[PaymentEntry] = await get_user_payments_view(
             user_id=current_user_id,
-            account_repository=uow.accounts,
-            user_repository=uow.users,
+            uow=uow,
         )
     except UserDoesNotExists:
         return json(
@@ -139,7 +138,7 @@ async def create_user(request: Request) -> HTTPResponse:
 
     try:
         use_case = CreateUser(uow=uow)
-        use_case.execute(dto=create_user)
+        await use_case.execute(dto=create_user)
     except UserIsAlreadyExistsError:
         return json(
             {"status": "error", "message": "user with email is already exists"},
@@ -164,7 +163,7 @@ async def delete_user(request: Request, user_id: int) -> HTTPResponse:
 
     try:
         use_case = DeleteUser(uow)
-        use_case.execute(delete_user)
+        await use_case.execute(delete_user)
     except UserDoesNotExists:
         return json(
             {"status": "error", "message": "user does not exists"},
@@ -176,7 +175,7 @@ async def delete_user(request: Request, user_id: int) -> HTTPResponse:
     )
 
 
-@admin_bp.post("/<user_id:int>")
+@admin_bp.put("/<user_id:int>")
 async def update_user(request: Request, user_id: int) -> HTTPResponse:
     app = request.app
     uow: AbstractUnitOfWork = app.ctx.uow
@@ -196,7 +195,7 @@ async def update_user(request: Request, user_id: int) -> HTTPResponse:
 
     try:
         use_case = UpdateUser(uow=uow)
-        use_case.execute(dto=update_user)
+        await use_case.execute(dto=update_user)
     except UserIsAlreadyExistsError:
         return json(
             {"status": "error", "message": "user with email is already exists"},
@@ -222,7 +221,7 @@ async def get_users(request: Request) -> HTTPResponse:
     app = request.app
     uow = app.ctx.uow
 
-    users = get_users_view(user_repository=uow.users)
+    users = await get_users_view(uow=uow)
 
     json_body = {"users": [dictify_user(user) for user in users]}
     response = json(json_body, status=StatusCodes.SUCCESS)
@@ -236,10 +235,9 @@ async def get_user_accounts(request: Request, user_id: int) -> HTTPResponse:
     app = request.app
     uow = app.ctx.uow
 
-    user_accounts = get_user_accounts_view(
+    user_accounts = await get_user_accounts_view(
         user_id=UserId(user_id),
-        account_repository=uow.accounts,
-        user_repository=uow.users,
+        uow=uow,
     )
     json_body = {
         "user": {
@@ -253,7 +251,8 @@ async def get_user_accounts(request: Request, user_id: int) -> HTTPResponse:
 
 
 users_api = Blueprint.group(user_bp, admin_bp, url_prefix="/users")
-user_bp.middleware(protected, attach_to="request")
-user_bp.middleware(is_user_or_admin, attach_to="request")
-admin_bp.middleware(protected, attach_to="request")
-admin_bp.middleware(is_admin, attach_to="request")
+
+user_bp.on_request(protected)
+user_bp.on_request(is_user_or_admin)
+admin_bp.on_request(protected)
+admin_bp.on_request(is_admin)

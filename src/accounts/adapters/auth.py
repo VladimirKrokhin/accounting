@@ -63,11 +63,11 @@ class AuthentificateDTO:
     password: str = field(repr=False)
 
 
-def is_user_type_in(
+async def is_user_type_in(
     user_id: UserId, user_types: list[UserType], user_repository: AbstractUserRepository
 ):
     """Тип пользователя находится в списке типов?"""
-    user = user_repository.get_user(user_id)
+    user = await user_repository.get_user(user_id)
     return user.user_type in user_types
 
 
@@ -88,12 +88,12 @@ def check_password_by_hash(password: str, hashed_password: str) -> bool:
     return res
 
 
-def authentificate(dto: AuthDTO, uow: AbstractUnitOfWork) -> UserDTO:
+async def authentificate(dto: AuthDTO, uow: AbstractUnitOfWork) -> UserDTO:
     """Аутентифицировать пользователя."""
 
     with uow:
         user_repository = uow.users
-        users = user_repository.get_users_by_email(dto.email)
+        users = await user_repository.get_users_by_email(dto.email)
 
         if len(users) != 1:
             raise AuthentificationError
@@ -129,13 +129,13 @@ def generate_token(user: UserDTO, config: AuthConfig) -> str:
     return token
 
 
-def authentificate_and_return_access_token(
+async def authentificate_and_return_access_token(
     dto: AuthentificateDTO,
     config: AuthConfig,
     uow: AbstractUnitOfWork,
 ):
     auth_dto = AuthDTO(email=dto.email, password=dto.password)
-    user_dto = authentificate(dto=auth_dto, uow=uow)
+    user_dto = await authentificate(dto=auth_dto, uow=uow)
     token = generate_token(user=user_dto, config=config)
 
     ret = AuthSuccessDTO(

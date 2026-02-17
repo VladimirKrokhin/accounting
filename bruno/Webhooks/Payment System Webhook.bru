@@ -1,0 +1,39 @@
+meta {
+  name: Payment System Webhook
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base-url}}/api/v1/transactions
+  body: json
+  auth: inherit
+}
+
+params:query {
+  : 
+}
+
+body:json {
+  {
+    "transaction_id": "{{transaction_id}}",
+    "user_id": {{user_id}},
+    "account_id": {{account_id}},
+    "amount": {{amount}},
+    "signature": "{{signature}}"
+  }
+  
+}
+
+vars:pre-request {
+  transaction_id: 5eae174f-7cd0-472c-bd36-35660f00132b
+  user_id: 1
+  account_id: 1
+  amount: 100
+  signature: 7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

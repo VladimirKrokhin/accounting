@@ -1,4 +1,4 @@
-# Исключения при работе с пользователем
+# User's Exceptions
 
 
 class UserError(Exception):
@@ -13,7 +13,7 @@ class UserDoesNotExists(UserError):
     pass
 
 
-# Исключения при обработке транзакции от платежной системы
+# Exceptions during handling Payment System's transactions (via webhooks)
 
 
 class PaymentSystemError(Exception):
@@ -24,28 +24,31 @@ class SignatureIsNotValid(PaymentSystemError):
     pass
 
 
-# Исключения при работе с платежами
+# Payment Entry's Exceptions
 
 
 class PaymentEntryError(Exception):
-    """Базовый класс для исключений и ошибок, связанных с платежом."""
-
     pass
 
 
 class PaymentEntryIsNotUniqueError(PaymentEntryError):
-    """Платеж дублируется."""
-
     pass
 
 
 class PaymentEntryDoesNotExistsError(PaymentEntryError):
-    """Платеж не найден."""
-
     pass
 
 
 class PaymentEntryAlreadyAccrued(PaymentEntryError):
-    """Платеж уже начислен."""
+    pass
 
+
+# Account's Exceptions
+
+
+class AccountError(Exception):
+    pass
+
+
+class AccountDoesNotExists(AccountError):
     pass

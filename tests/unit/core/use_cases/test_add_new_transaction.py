@@ -11,15 +11,16 @@ from accounts.core.entities import (
     AccountId,
 )
 from accounts.core.use_cases.payment_system import add_new_transaction
-from accounts.adapters.repository import FakeAccountRepository
+from fakes import FakeAccountRepository
 
 
-def test_add_new_transaction_success():
+@pytest.mark.asyncio
+async def test_add_new_transaction_success():
     account_repository = FakeAccountRepository()
     account = Account(id_=AccountId(1), user_id=UserId(1), balance=Money(Decimal(1)))
     tr_id = TransactionId(uuid4())
 
-    add_new_transaction(
+    await add_new_transaction(
         account_repository=account_repository,
         account=account,
         transaction_id=tr_id,
@@ -39,13 +40,14 @@ def test_add_new_transaction_success():
     assert p.is_accrued == False
 
 
-def test_add_new_transaction_duplicate():
+@pytest.mark.asyncio
+async def test_add_new_transaction_duplicate():
     account_repository = FakeAccountRepository()
     account1 = Account(id_=AccountId(1), user_id=UserId(1), balance=Money(Decimal(1)))
     account2 = Account(id_=AccountId(2), user_id=UserId(1), balance=Money(Decimal(1)))
     tr_id = TransactionId(uuid4())
 
-    add_new_transaction(
+    await add_new_transaction(
         account_repository=account_repository,
         account=account1,
         transaction_id=tr_id,
@@ -53,7 +55,7 @@ def test_add_new_transaction_duplicate():
     )
 
     with pytest.raises(PaymentEntryIsNotUniqueError, match="Транзакция дублируется"):
-        add_new_transaction(
+        await add_new_transaction(
             account_repository=account_repository,
             account=account2,
             transaction_id=tr_id,

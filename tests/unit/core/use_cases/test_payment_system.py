@@ -1,17 +1,17 @@
 from decimal import Decimal
 from uuid import UUID
 
+import pytest
+
 from accounts.config import PaymentSystemConfig
 from accounts.core.use_cases.payment_system import ProcessPaymentSystemWebHook
 from accounts.dtos import HandlePaymentSystemTransactionDTO, UserDTO, UserType
 from accounts.core.entities import Account, AccountId, Money, TransactionId, UserId
-from accounts.adapters.repository import (
-    FakeAccountRepository,
-    FakeUserRepository,
-)
-from accounts.service_layer.unit_of_work import FakeUnitOfWork
+
+from fakes import FakeAccountRepository, FakeUserRepository, FakeUnitOfWork
 
 
+@pytest.mark.asyncio
 async def test_process_payment_system_transaction_success_user_has_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
@@ -37,8 +37,8 @@ async def test_process_payment_system_transaction_success_user_has_account():
         user_id=user_id,
         user_type=UserType.USER,
     )
-    account_repository.save_account(account)
-    user_repository.save_user(user)
+    await account_repository.save_account(account)
+    await user_repository.save_user(user)
     uow = FakeUnitOfWork(users=user_repository, accounts=account_repository)
 
     dto = HandlePaymentSystemTransactionDTO(
@@ -56,7 +56,7 @@ async def test_process_payment_system_transaction_success_user_has_account():
     use_case = ProcessPaymentSystemWebHook(config=config, uow=uow)
     await use_case.execute(dto)
 
-    account = account_repository.get_account_by_id(account_id)
+    account = await account_repository.get_account_by_id(account_id)
 
     # Платеж появился на счете
     assert len(account.payments) == 1
@@ -70,6 +70,7 @@ async def test_process_payment_system_transaction_success_user_has_account():
     assert p.is_accrued == True
 
 
+@pytest.mark.asyncio
 async def test_process_payment_system_transaction_success_user_has_not_account():
     secret = "gfdmhghif38yrf9ew0jkf32"
     signature = "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
@@ -81,7 +82,7 @@ async def test_process_payment_system_transaction_success_user_has_not_account()
     account_id = AccountId(1)
 
     account_repository = FakeAccountRepository()
-    user_repository = FakeUserRepository({}, 1)
+    user_repository = FakeUserRepository()
 
     user = UserDTO(
         email="test@user.example",
@@ -90,7 +91,7 @@ async def test_process_payment_system_transaction_success_user_has_not_account()
         user_id=user_id,
         user_type=UserType.USER,
     )
-    user_repository.save_user(user)
+    await user_repository.save_user(user)
 
     uow = FakeUnitOfWork(users=user_repository, accounts=account_repository)
 
@@ -103,7 +104,7 @@ async def test_process_payment_system_transaction_success_user_has_not_account()
     )
 
     # Счета нет
-    assert not account_repository.is_user_has_account(
+    assert not await account_repository.does_user_have_account(
         user_id=user_id, account_id=account_id
     )
 
@@ -114,7 +115,7 @@ async def test_process_payment_system_transaction_success_user_has_not_account()
     use_case = ProcessPaymentSystemWebHook(config=config, uow=uow)
     await use_case.execute(dto)
 
-    account = account_repository.get_account_by_id(account_id)
+    account = await account_repository.get_account_by_id(account_id)
 
     # Платеж появился на счете
     assert len(account.payments) == 1

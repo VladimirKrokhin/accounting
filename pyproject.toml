@@ -38,8 +38,6 @@ env_override_existing_values = 1
 env_files = [
     "src/.env"
 ]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv]
 package = true

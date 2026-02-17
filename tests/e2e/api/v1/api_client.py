@@ -7,11 +7,11 @@ def post_auth(sanic_test_client: SanicTestClient, email: str, password: str):
     auth_uri = API_URI + "/auth"
 
     request, response = sanic_test_client.post(
-        uri=auth_uri,
-        json=dict(
-            email=email,
-            password=password,
-        ),
+        auth_uri,
+        json={
+            "email": email,
+            "password": password,
+        },
     )
 
     json = response.json
@@ -31,14 +31,14 @@ def post_transaction(
     transactions_url = API_URI + "/transactions"
 
     request, response = sanic_test_client.post(
-        uri=transactions_url,
-        json=dict(
-            transaction_id=transaction_id,
-            user_id=user_id,
-            account_id=account_id,
-            amount=amount,
-            signature=signature,
-        ),
+        transactions_url,
+        json={
+            "transaction_id": transaction_id,
+            "user_id": user_id,
+            "account_id": account_id,
+            "amount": amount,
+            "signature": signature,
+        },
     )
 
     json = response.json
@@ -55,7 +55,7 @@ def get_current_user(sanic_test_client: SanicTestClient, token: str):
     me_uri = ME_URI
 
     request, response = sanic_test_client.get(
-        uri=me_uri,
+        me_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -69,7 +69,7 @@ def get_current_user_accounts(sanic_test_client: SanicTestClient, token: str):
     me_accounts_uri = ME_URI + "/accounts"
 
     request, response = sanic_test_client.get(
-        uri=me_accounts_uri,
+        me_accounts_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -83,7 +83,7 @@ def get_current_user_payments(sanic_test_client: SanicTestClient, token: str):
     me_payments_uri = ME_URI + "/payments"
 
     request, response = sanic_test_client.get(
-        uri=me_payments_uri,
+        me_payments_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -93,7 +93,7 @@ def get_current_user_payments(sanic_test_client: SanicTestClient, token: str):
     return status_code, json
 
 
-async def post_create_user(
+def post_create_user(
     sanic_test_client: SanicTestClient,
     token: str,
     email: str,
@@ -103,7 +103,7 @@ async def post_create_user(
     user_uri = USERS_URI
 
     request, response = sanic_test_client.post(
-        uri=user_uri,
+        user_uri,
         json=dict(
             email=email,
             full_name=full_name,
@@ -118,11 +118,11 @@ async def post_create_user(
     return status_code, json
 
 
-async def delete_user(sanic_test_client: SanicTestClient, token: str, user_id: int):
+def delete_user(sanic_test_client: SanicTestClient, token: str, user_id: int):
     delete_user_uri = USERS_URI + f"/{user_id}"
 
     request, response = sanic_test_client.delete(
-        uri=delete_user_uri,
+        delete_user_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -143,7 +143,7 @@ def patch_user(
     patch_user_uri = USERS_URI + f"/{user_id}"
 
     request, response = sanic_test_client.patch(
-        uri=patch_user_uri,
+        patch_user_uri,
         json=dict(
             email=email,
             full_name=full_name,
@@ -162,7 +162,7 @@ def get_users(sanic_test_client: SanicTestClient, token: str):
     get_users_uri = USERS_URI + "/"
 
     request, response = sanic_test_client.get(
-        uri=get_users_uri,
+        get_users_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -176,7 +176,7 @@ def get_user_accounts(sanic_test_client: SanicTestClient, token: str, user_id: i
     get_user_accounts_uri = USERS_URI + f"/{user_id}/accounts"
 
     request, response = sanic_test_client.get(
-        uri=get_user_accounts_uri,
+        get_user_accounts_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
