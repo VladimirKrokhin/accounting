@@ -49,13 +49,12 @@ async def protected(request: Request):
         )
 
 
-async def get_user_type_required_middleware(allowed_user_types: list[UserType]):
+def get_user_type_required_middleware(allowed_user_types: list[UserType]):
     """Фабрика для миддлварей по типам пользователей."""
 
     async def middleware(request: Request):
         app = request.app
         uow: AbstractUnitOfWork = app.ctx.uow
-        user_repository: AbstractUserRepository = uow.users
         user_id: UserId = request.ctx.user_id
 
         if not user_id:
@@ -64,12 +63,9 @@ async def get_user_type_required_middleware(allowed_user_types: list[UserType]):
                 status=StatusCodes.ERROR_UNAUTHORIZED,
             )
 
-        async with uow:
-            is_user_type_in_allowed = await is_user_type_in(
-                user_id=user_id,
-                user_types=allowed_user_types,
-                user_repository=user_repository,
-            )
+        is_user_type_in_allowed = await is_user_type_in(
+            user_id=user_id, user_types=allowed_user_types, uow=uow
+        )
 
         if not is_user_type_in_allowed:
             return json(

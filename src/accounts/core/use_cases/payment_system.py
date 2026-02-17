@@ -24,6 +24,21 @@ from accounts.adapters.repository import (
 from accounts.service_layer.unit_of_work import AbstractUnitOfWork
 
 
+def create_signature_hash(
+    transaction_id: TransactionId,
+    account_id: AccountId,
+    user_id: UserId,
+    amount: Money,
+    secret_key: str,
+):
+    signature_string = f"{account_id}{amount}{transaction_id}{user_id}{secret_key}"
+    signature_hasher = hashlib.sha256()
+    signature_hasher.update(signature_string.encode())
+    signature_hash = signature_hasher.hexdigest()
+
+    return signature_hash
+
+
 def validate_transaction_signature(
     signature: str,
     transaction_id: TransactionId,
@@ -50,10 +65,13 @@ def validate_transaction_signature(
     }
     """
 
-    signature_string = f"{account_id}{amount}{transaction_id}{user_id}{secret_key}"
-    signature_hasher = hashlib.sha256()
-    signature_hasher.update(signature_string.encode())
-    signature_hash = signature_hasher.hexdigest()
+    signature_hash = create_signature_hash(
+        transaction_id=transaction_id,
+        account_id=account_id,
+        user_id=user_id,
+        amount=amount,
+        secret_key=secret_key,
+    )
 
     is_valid = signature_hash == signature
     if not is_valid:

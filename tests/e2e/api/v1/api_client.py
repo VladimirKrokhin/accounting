@@ -1,12 +1,13 @@
-from sanic_testing.manager import SanicTestClient
+from sanic.models.handler_types import Sanic
+from sanic_testing.testing import SanicASGITestClient
 
 API_URI = "/api/v1"
 
 
-def post_auth(sanic_test_client: SanicTestClient, email: str, password: str):
+async def post_auth(test_client: SanicASGITestClient, email: str, password: str):
     auth_uri = API_URI + "/auth"
 
-    request, response = sanic_test_client.post(
+    request, response = await test_client.post(
         auth_uri,
         json={
             "email": email,
@@ -14,14 +15,11 @@ def post_auth(sanic_test_client: SanicTestClient, email: str, password: str):
         },
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def post_transaction(
-    sanic_test_client: SanicTestClient,
+async def post_transaction(
+    test_client: SanicASGITestClient,
     transaction_id: str,
     account_id: int,
     user_id: int,
@@ -30,7 +28,7 @@ def post_transaction(
 ):
     transactions_url = API_URI + "/transactions"
 
-    request, response = sanic_test_client.post(
+    request, response = await test_client.post(
         transactions_url,
         json={
             "transaction_id": transaction_id,
@@ -41,60 +39,48 @@ def post_transaction(
         },
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
 USERS_URI = API_URI + "/users"
 ME_URI = USERS_URI + "/me"
 
 
-def get_current_user(sanic_test_client: SanicTestClient, token: str):
+async def get_current_user(test_client: SanicASGITestClient, token: str):
     me_uri = ME_URI
 
-    request, response = sanic_test_client.get(
+    request, response = await test_client.get(
         me_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def get_current_user_accounts(sanic_test_client: SanicTestClient, token: str):
+async def get_current_user_accounts(test_client: SanicASGITestClient, token: str):
     me_accounts_uri = ME_URI + "/accounts"
 
-    request, response = sanic_test_client.get(
+    request, response = await test_client.get(
         me_accounts_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def get_current_user_payments(sanic_test_client: SanicTestClient, token: str):
+async def get_current_user_payments(test_client: SanicASGITestClient, token: str):
     me_payments_uri = ME_URI + "/payments"
 
-    request, response = sanic_test_client.get(
+    request, response = await test_client.get(
         me_payments_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def post_create_user(
-    sanic_test_client: SanicTestClient,
+async def post_create_user(
+    test_client: SanicASGITestClient,
     token: str,
     email: str,
     full_name: str,
@@ -102,7 +88,7 @@ def post_create_user(
 ):
     user_uri = USERS_URI
 
-    request, response = sanic_test_client.post(
+    request, response = await test_client.post(
         user_uri,
         json=dict(
             email=email,
@@ -112,28 +98,22 @@ def post_create_user(
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def delete_user(sanic_test_client: SanicTestClient, token: str, user_id: int):
+async def delete_user(test_client: SanicASGITestClient, token: str, user_id: int):
     delete_user_uri = USERS_URI + f"/{user_id}"
 
-    request, response = sanic_test_client.delete(
+    request, response = await test_client.delete(
         delete_user_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def patch_user(
-    sanic_test_client: SanicTestClient,
+async def put_user(
+    test_client: SanicASGITestClient,
     token: str,
     email: str,
     full_name: str,
@@ -142,7 +122,7 @@ def patch_user(
 ):
     patch_user_uri = USERS_URI + f"/{user_id}"
 
-    request, response = sanic_test_client.patch(
+    request, response = await test_client.put(
         patch_user_uri,
         json=dict(
             email=email,
@@ -152,35 +132,26 @@ def patch_user(
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def get_users(sanic_test_client: SanicTestClient, token: str):
+async def get_users(test_client: SanicASGITestClient, token: str):
     get_users_uri = USERS_URI + "/"
 
-    request, response = sanic_test_client.get(
+    request, response = await test_client.get(
         get_users_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
 
 
-def get_user_accounts(sanic_test_client: SanicTestClient, token: str, user_id: int):
+async def get_user_accounts(test_client: SanicASGITestClient, token: str, user_id: int):
     get_user_accounts_uri = USERS_URI + f"/{user_id}/accounts"
 
-    request, response = sanic_test_client.get(
+    request, response = await test_client.get(
         get_user_accounts_uri,
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    json = response.json
-    status_code = response.status_code
-
-    return status_code, json
+    return request, response
