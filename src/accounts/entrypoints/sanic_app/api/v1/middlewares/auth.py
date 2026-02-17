@@ -64,11 +64,12 @@ async def get_user_type_required_middleware(allowed_user_types: list[UserType]):
                 status=StatusCodes.ERROR_UNAUTHORIZED,
             )
 
-        is_user_type_in_allowed = await is_user_type_in(
-            user_id=user_id,
-            user_types=allowed_user_types,
-            user_repository=user_repository,
-        )
+        async with uow:
+            is_user_type_in_allowed = await is_user_type_in(
+                user_id=user_id,
+                user_types=allowed_user_types,
+                user_repository=user_repository,
+            )
 
         if not is_user_type_in_allowed:
             return json(

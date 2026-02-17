@@ -64,10 +64,14 @@ class AuthentificateDTO:
 
 
 async def is_user_type_in(
-    user_id: UserId, user_types: list[UserType], user_repository: AbstractUserRepository
+    user_id: UserId,
+    user_types: list[UserType],
+    uow: AbstractUnitOfWork,
 ):
     """Тип пользователя находится в списке типов?"""
-    user = await user_repository.get_user(user_id)
+    async with uow:
+        user_repository = uow.users
+        user = await user_repository.get_user(user_id)
     return user.user_type in user_types
 
 
@@ -91,7 +95,7 @@ def check_password_by_hash(password: str, hashed_password: str) -> bool:
 async def authentificate(dto: AuthDTO, uow: AbstractUnitOfWork) -> UserDTO:
     """Аутентифицировать пользователя."""
 
-    with uow:
+    async with uow:
         user_repository = uow.users
         users = await user_repository.get_users_by_email(dto.email)
 

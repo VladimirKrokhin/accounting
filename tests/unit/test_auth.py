@@ -167,7 +167,6 @@ def test_password_hashing():
 
 @pytest.mark.asyncio
 async def test_is_user_type_in_check(uow_with_user):
-    repo = uow_with_user.users
 
-    assert await is_user_type_in(UserId(1), [UserType.USER], repo) is True
-    assert await is_user_type_in(UserId(1), [UserType.ADMIN], repo) is False
+    assert await is_user_type_in(UserId(1), [UserType.USER], uow_with_user) is True
+    assert await is_user_type_in(UserId(1), [UserType.ADMIN], uow_with_user) is False

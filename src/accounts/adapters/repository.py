@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
+from typing import Sequence
 
 from sqlalchemy import delete, exists, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from accounts.dtos import UserDTO
 from accounts.core.types import AccountId, UserId, TransactionId
@@ -121,7 +123,7 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
     SQLAlchemy Account Repository.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def does_payment_entry_exist_by_transaction_id(
@@ -130,7 +132,7 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
         stmt = select(
             exists().where(SQLAlchemyPaymentEntry.transaction_id == transaction_id)
         )
-        return self._session.scalar(stmt) or False
+        return await self._session.scalar(stmt) or False
 
     async def does_user_have_account(
         self, user_id: UserId, account_id: AccountId
@@ -140,18 +142,18 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
                 SQLAlchemyAccount.id == account_id, SQLAlchemyAccount.user_id == user_id
             )
         )
-        return self._session.scalar(stmt) or False
+        return await self._session.scalar(stmt) or False
 
     async def save_account(self, account: Account) -> AccountId:
         orm_account = AccountMapper.to_orm(account)
         is_new_account = orm_account.id is None
 
         if not is_new_account:
-            orm_account = self._session.merge(orm_account)
+            orm_account = await self._session.merge(orm_account)
         else:
             self._session.add(orm_account)
 
-        self._session.flush()
+        await self._session.flush()
 
         account_id = AccountId(orm_account.id)
 
@@ -164,10 +166,14 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
 
     async def does_account_exist(self, account_id: AccountId) -> bool:
         stmt = select(exists().where(SQLAlchemyAccount.id == account_id))
-        return self._session.scalar(stmt) or False
+        return await self._session.scalar(stmt) or False
 
     async def get_account_by_id(self, account_id: AccountId) -> Account:
-        orm_account = self._session.get(SQLAlchemyAccount, account_id)
+        orm_account: SQLAlchemyAccount | None = await self._session.get(
+            SQLAlchemyAccount,
+            account_id,
+            options=[selectinload(SQLAlchemyAccount.payments)],
+        )
 
         if orm_account is None:
             raise AccountDoesNotExists(f"Account with id={account_id} does not exists")
@@ -175,9 +181,16 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
         return AccountMapper.to_domain(orm_account)
 
     async def get_user_accounts(self, user_id: UserId) -> list[Account]:
-        stmt = select(SQLAlchemyAccount).where(SQLAlchemyAccount.user_id == user_id)
+        stmt = (
+            select(SQLAlchemyAccount)
+            .where(SQLAlchemyAccount.user_id == user_id)
+            .options(selectinload(SQLAlchemyAccount.payments))
+        )
 
-        orm_accounts = self._session.scalars(stmt).all()
+        orm_accounts: Sequence[SQLAlchemyAccount] = (
+            await self._session.scalars(stmt)
+        ).all()
+
         accounts = [
             AccountMapper.to_domain(orm_account) for orm_account in orm_accounts
         ]
@@ -191,7 +204,9 @@ class SQLAlchemyAccountRepository(AbstractAccountRepository):
             .where(SQLAlchemyAccount.user_id == user_id)
         )
 
-        orm_payments = self._session.scalars(stmt).all()
+        orm_payments: Sequence[SQLAlchemyPaymentEntry] = (
+            await self._session.scalars(stmt)
+        ).all()
         payments = [
             PaymentEntryMapper.to_domain(orm_payment) for orm_payment in orm_payments
         ]
@@ -241,54 +256,55 @@ class AbstractUserRepository(metaclass=ABCMeta):
 
 
 class SQLAlchemyUserRepository(AbstractUserRepository):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def does_user_exist(self, user_id: UserId) -> bool:
         stmt = select(exists().where(User.id == user_id))
-        return self._session.scalar(stmt) or False
+        return await self._session.scalar(stmt) or False
 
     async def does_user_exist_by_email(self, email: str) -> bool:
         stmt = select(exists().where(User.email_address == email))
-        return self._session.scalar(stmt) or False
+        return await self._session.scalar(stmt) or False
 
     async def get_user(self, user_id: UserId) -> UserDTO:
-        orm_user = self._session.get(User, user_id)
+        orm_user: User | None = await self._session.get(User, user_id)
+
         if not orm_user:
             raise UserDoesNotExists(f"Cannot get User {user_id}: not found")
+
         return UserMapper.to_dto(orm_user)
 
-    async def save_user(self, user: UserDTO) -> UserId:
-        orm_user = UserMapper.to_orm(user)
+    async def save_user(self, user_dto: UserDTO) -> UserId:
+        orm_user = UserMapper.to_orm(user_dto)
 
-        if user.user_id is not None:
-            # Если ID есть, используем merge для обновления существующего объекта
-            orm_user = self._session.merge(orm_user)
+        if orm_user.id is not None:
+            # Обновление существующего (включая все связанные таблицы наследования)
+            orm_user = await self._session.merge(orm_user)
         else:
-            # Если ID нет, добавляем как новый
+            # Создание нового
             self._session.add(orm_user)
 
-        # Flush отправляет изменения в БД и получает ID, но не фиксирует транзакцию
-        self._session.flush()
+        await self._session.flush()  # Получаем ID из БД
 
-        generated_id = UserId(orm_user.id)
-        user.user_id = generated_id
-        return generated_id
+        new_id = UserId(orm_user.id)
+        user_dto.user_id = new_id
+        return new_id
 
     async def delete_user(self, user_id: UserId) -> None:
-        if not await self.does_user_exist(user_id):
-            raise UserDoesNotExists(f"Cannot delete: User {user_id} not found")
+        user = await self._session.get(User, user_id)
+        if not user:
+            raise UserDoesNotExists(f"User with id {user_id} not found")
 
-        stmt = delete(User).where(User.id == user_id)
-        self._session.execute(stmt)
-        self._session.flush()
+        await self._session.delete(user)
+        await self._session.flush()
 
     async def get_users(self) -> list[UserDTO]:
         stmt = select(User)
-        result = self._session.scalars(stmt).all()
-        return [UserMapper.to_dto(u) for u in result]
+        users: Sequence[User] = (await self._session.scalars(stmt)).all()
+        return [UserMapper.to_dto(u) for u in users]
 
     async def get_users_by_email(self, email: str) -> list[UserDTO]:
         stmt = select(User).where(User.email_address == email)
-        result = self._session.scalars(stmt).all()
-        return [UserMapper.to_dto(u) for u in result]
+        users: Sequence[User] = (await self._session.scalars(stmt)).all()
+        return [UserMapper.to_dto(u) for u in users]

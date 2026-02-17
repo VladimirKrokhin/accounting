@@ -1,7 +1,7 @@
 import abc
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 
 from accounts.adapters.repository import (
     AbstractAccountRepository,
@@ -17,68 +17,41 @@ class AbstractUnitOfWork(abc.ABC):
     accounts: AbstractAccountRepository
     users: AbstractUserRepository
 
-    def __enter__(self) -> AbstractUnitOfWork:
+    async def __aenter__(self) -> AbstractUnitOfWork:
         return self
 
-    def __exit__(self, *args):
-        self.rollback()
+    async def __aexit__(self, *args):
+        await self.rollback()
 
-    def commit(self):
-        self._commit()
+    async def commit(self):
+        await self._commit()
 
     @abc.abstractmethod
-    def _commit(self):
+    async def _commit(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rollback(self):
+    async def rollback(self):
         raise NotImplementedError
-
-
-def get_postgres_uri():
-    """
-    Формирует строку подключения к Postgres из переменных окружения.
-    Значения по умолчанию соответствуют стандартным настройкам или локальному Docker.
-    """
-    user = os.environ.get("POSTGRES_USER", "accounts")
-    password = os.environ.get("POSTGRES_PASSWORD", "accounts")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    db_name = os.environ.get("POSTGRES_DB_NAME", "accounts")
-
-    return f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
-
-
-DEFAULT_SQLALCHEMY_ENGINE = create_engine(
-    get_postgres_uri(),
-    isolation_level="REPEATABLE READ",
-)
-
-
-DEFAULT_SESSION_FACTORY = sessionmaker(bind=DEFAULT_SQLALCHEMY_ENGINE)
 
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
-    def __init__(self, session_factory: sessionmaker = DEFAULT_SESSION_FACTORY):
+    def __init__(self, session_factory: async_sessionmaker):
         self.session_factory = session_factory
 
-    def __enter__(self):
+    async def __aenter__(self):
         self.session = self.session_factory()
+
         self.accounts = SQLAlchemyAccountRepository(self.session)
         self.users = SQLAlchemyUserRepository(self.session)
-        return self
+        return await super().__aenter__()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            self.rollback()
-        else:
-            pass
+    async def __aexit__(self, *args):
+        await super().__aexit__(*args)
+        await self.session.close()
 
-        self.session.close()
-        del self.session
+    async def _commit(self):
+        await self.session.commit()
 
-    def _commit(self):
-        self.session.commit()
-
-    def rollback(self):
-        self.session.rollback()
+    async def rollback(self):
+        await self.session.rollback()

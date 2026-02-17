@@ -4,14 +4,14 @@ meta {
   seq: 3
 }
 
-post {
+put {
   url: {{base-url}}/api/v1/users/:user_id
   body: json
   auth: inherit
 }
 
 params:path {
-  user_id: 1
+  user_id: 15
 }
 
 body:json {

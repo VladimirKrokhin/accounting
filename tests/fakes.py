@@ -181,8 +181,8 @@ class FakeUnitOfWork(AbstractUnitOfWork):
         self.users = users
         self.committed = False
 
-    def _commit(self):
+    async def _commit(self):
         self.committed = True
 
-    def rollback(self):
+    async def rollback(self):
         pass

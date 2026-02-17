@@ -3,7 +3,34 @@ from datetime import timedelta
 import os
 import re
 
-__all__ = ["Config", "load_config"]
+__all__ = [
+    "Config",
+    "PaymentSystemConfig",
+    "AuthConfig",
+    "PostgresConfig",
+    "load_config",
+]
+
+
+@dataclass(frozen=True)
+class PaymentSystemConfig:
+    secret_key: str
+
+
+@dataclass(frozen=True)
+class AuthConfig:
+    secret_key: str = field(repr=False)
+    expiration_time: timedelta
+    encryption_algorithm: str
+
+
+@dataclass(frozen=True)
+class PostgresConfig:
+    user: str
+    password: str
+    host: str
+    port: int
+    db_name: str
 
 
 @dataclass(frozen=True)
@@ -26,6 +53,25 @@ class Config:
     AUTH_ENCRYPTION_ALGORITHM: str
     # секретный ключ к шифрованию токена
     AUTH_SECRET_KEY: str
+
+    def get_postgres_config(self) -> PostgresConfig:
+        return PostgresConfig(
+            host=self.POSTGRES_HOST,
+            port=self.POSTGRES_PORT,
+            password=self.POSTGRES_PASSWORD,
+            user=self.POSTGRES_USER,
+            db_name=self.POSTGRES_DB_NAME,
+        )
+
+    def get_auth_config(self) -> AuthConfig:
+        return AuthConfig(
+            expiration_time=self.AUTH_EXPIRATION_TIME,
+            encryption_algorithm=self.AUTH_ENCRYPTION_ALGORITHM,
+            secret_key=self.AUTH_SECRET_KEY,
+        )
+
+    def get_payment_system_config(self) -> PaymentSystemConfig:
+        return PaymentSystemConfig(secret_key=self.PAYMENT_SYSTEM_SECRET_KEY)
 
 
 def parse_time(time_str: str) -> timedelta:
@@ -72,15 +118,3 @@ def load_config() -> Config:
     )
 
     return config
-
-
-@dataclass(frozen=True)
-class PaymentSystemConfig:
-    secret_key: str
-
-
-@dataclass(frozen=True)
-class AuthConfig:
-    secret_key: str = field(repr=False)
-    expiration_time: timedelta
-    encryption_algorithm: str

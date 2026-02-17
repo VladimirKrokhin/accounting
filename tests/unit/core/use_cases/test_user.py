@@ -39,7 +39,7 @@ async def test_create_user_success(uow):
 async def test_create_user_fails_if_email_exists(uow):
     email = "duplicate@test.com"
     # Предварительно сохраняем пользователя
-    with uow:
+    async with uow:
         await uow.users.save_user(
             UserDTO(
                 email=email,
@@ -48,7 +48,7 @@ async def test_create_user_fails_if_email_exists(uow):
                 password_hash="...",
             )
         )
-        uow.commit()
+        await uow.commit()
 
     dto = CreateUserDTO(email=email, password="password", full_name="User")
 

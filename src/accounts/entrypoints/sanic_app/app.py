@@ -1,11 +1,13 @@
 from sanic import Sanic
 
+from accounts.adapters.sqlalchemy.db import (
+    create_async_session_factory,
+    create_async_sqlalchemy_engine,
+    init_db,
+)
 from accounts.adapters.sqlalchemy.models import Base
 from accounts.config import load_config
-from accounts.dtos import UserDTO, UserType
-from accounts.core.entities import UserId
 from accounts.service_layer.unit_of_work import (
-    DEFAULT_SQLALCHEMY_ENGINE,
     SqlAlchemyUnitOfWork,
 )
 from accounts.entrypoints.sanic_app.api import api
@@ -18,19 +20,18 @@ app.blueprint(api)
 
 @app.before_server_start
 async def bootstrap_app(app: Sanic):
-    init_app(app)
+    await init_app(app)
 
 
-def init_app(app: Sanic, uow=None) -> Sanic:
+async def init_app(app: Sanic, uow=None) -> Sanic:
     app_config = load_config()
     app.update_config(app_config)
-
-    Base.metadata.create_all(DEFAULT_SQLALCHEMY_ENGINE)
 
     if uow is not None:
         app.ctx.uow = uow
     elif not hasattr(app.ctx, "uow"):
-        uow = SqlAlchemyUnitOfWork()
+        session_factory = await init_db(app_config.get_postgres_config())
+        uow = SqlAlchemyUnitOfWork(session_factory)
 
         # account_repository = FakeAccountRepository()
         #

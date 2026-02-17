@@ -1,5 +1,6 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import StaticPool, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from accounts.dtos import UserDTO, UserType
@@ -10,20 +11,26 @@ from accounts.adapters.sqlalchemy.models import Base
 
 
 @pytest.fixture(scope="function")
-def engine():
+async def engine():
     # Используем SQLite в памяти для тестов
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    yield engine
-    Base.metadata.drop_all(engine)
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        yield engine
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(scope="function")
-def session(engine):
-    SessionLocal = sessionmaker(bind=engine)
+async def session(engine):
+    SessionLocal = async_sessionmaker(bind=engine)
     session = SessionLocal()
     yield session
-    session.close()
+    await session.close()
 
 
 @pytest.fixture(scope="function")
@@ -43,7 +50,7 @@ async def test_repository_can_save_and_retrieve_user(user_repository, session):
 
     # Сохраняем
     user_id = await user_repository.save_user(user_dto)
-    session.commit()
+    await session.commit()
 
     # Получаем обратно
     retrieved_user = await user_repository.get_user(user_id)
@@ -65,7 +72,7 @@ async def test_repository_can_save_different_user_types(user_repository, session
     )
 
     admin_id = await user_repository.save_user(admin_dto)
-    session.commit()
+    await session.commit()
 
     retrieved_admin = await user_repository.get_user(admin_id)
     assert retrieved_admin.user_type == UserType.ADMIN
@@ -82,7 +89,7 @@ async def test_does_user_exist_by_methods(user_repository, session):
         password_hash="hash",
     )
     user_id = await user_repository.save_user(user_dto)
-    session.commit()
+    await session.commit()
 
     # Проверка по ID
     assert await user_repository.does_user_exist(user_id) is True
@@ -100,7 +107,7 @@ async def test_get_users_by_email(user_repository, session):
     await user_repository.save_user(
         UserDTO("other@test.com", "User 2", UserType.USER, "h2")
     )
-    session.commit()
+    await session.commit()
 
     users = await user_repository.get_users_by_email(email)
     assert len(users) == 1
@@ -111,14 +118,14 @@ async def test_get_users_by_email(user_repository, session):
 async def test_update_existing_user(user_repository, session):
     user_dto = UserDTO("old@test.com", "Old Name", UserType.USER, "h1")
     user_id = await user_repository.save_user(user_dto)
-    session.commit()
+    await session.commit()
 
     # Обновляем данные в DTO
     user_dto.full_name = "New Name"
     user_dto.email = "new@test.com"
 
     await user_repository.save_user(user_dto)
-    session.commit()
+    await session.commit()
 
     # Проверяем обновление
     session.expire_all()
@@ -131,12 +138,12 @@ async def test_update_existing_user(user_repository, session):
 async def test_delete_user(user_repository, session):
     user_dto = UserDTO("delete@test.com", "To Delete", UserType.USER, "h1")
     user_id = await user_repository.save_user(user_dto)
-    session.commit()
+    await session.commit()
 
     assert await user_repository.does_user_exist(user_id) is True
 
     await user_repository.delete_user(user_id)
-    session.commit()
+    await session.commit()
 
     assert await user_repository.does_user_exist(user_id) is False
 
@@ -157,7 +164,7 @@ async def test_delete_user_raises_error_if_not_found(user_repository):
 async def test_get_all_users(user_repository, session):
     await user_repository.save_user(UserDTO("u1@t.com", "U1", UserType.USER, "p1"))
     await user_repository.save_user(UserDTO("u2@t.com", "U2", UserType.ADMIN, "p2"))
-    session.commit()
+    await session.commit()
 
     all_users = await user_repository.get_users()
     assert len(all_users) == 2

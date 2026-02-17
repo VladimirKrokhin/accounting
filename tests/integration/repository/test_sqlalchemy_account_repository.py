@@ -2,7 +2,8 @@ import pytest
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import create_engine
+from sqlalchemy import StaticPool, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from accounts.core.entities import Account
@@ -13,20 +14,25 @@ from accounts.adapters.sqlalchemy.models import Base
 
 
 @pytest.fixture(scope="function")
-def engine():
+async def engine():
     # Используем SQLite в памяти для тестов
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    yield engine
-    Base.metadata.drop_all(engine)
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        yield engine
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(scope="function")
-def session(engine):
-    SessionLocal = sessionmaker(bind=engine)
+async def session(engine):
+    SessionLocal = async_sessionmaker(bind=engine)
     session = SessionLocal()
     yield session
-    session.close()
+    await session.close()
 
 
 @pytest.fixture(scope="function")
@@ -45,7 +51,7 @@ async def test_repository_can_save_and_retrieve_account(repository, session):
 
     # Сохраняем
     account_id = await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     # Получаем обратно
     retrieved_account = await repository.get_account_by_id(account_id)
@@ -119,7 +125,7 @@ async def test_is_payment_entry_exists_by_transaction_id(repository, session):
     account.add_payment_entry(transaction_id=tx_id, amount=Money(Decimal("10.00")))
 
     await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     assert await repository.does_payment_entry_exist_by_transaction_id(tx_id) is True
     assert (
@@ -135,7 +141,7 @@ async def test_is_user_has_account(repository, session):
     uid = UserId(55)
     account = Account(user_id=uid)
     acc_id = await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     assert await repository.does_user_have_account(uid, acc_id) is True
     assert await repository.does_user_have_account(UserId(999), acc_id) is False
@@ -146,7 +152,7 @@ async def test_save_account_updates_existing_balance(repository, session):
     # Создаем
     account = Account(user_id=UserId(1), balance=Money(Decimal("100.00")))
     acc_id = await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     # Изменяем баланс
     account.id_ = acc_id
@@ -154,7 +160,7 @@ async def test_save_account_updates_existing_balance(repository, session):
 
     # Сохраняем обновление
     await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     # Проверяем
     session.expire_all()
@@ -172,7 +178,7 @@ async def test_get_account_by_id_raises_error_if_not_found(repository):
 async def test_is_account_exists(repository, session):
     account = Account(user_id=UserId(1))
     acc_id = await repository.save_account(account)
-    session.commit()
+    await session.commit()
 
     assert await repository.does_account_exist(acc_id) is True
     assert await repository.does_account_exist(AccountId(9999)) is False

@@ -30,7 +30,7 @@ class CreateUser:
         self.uow = uow
 
     async def execute(self, dto: CreateUserDTO) -> int:
-        with self.uow as uow:
+        async with self.uow as uow:
             user_repository = uow.users
             is_user_exists = await user_repository.does_user_exist_by_email(dto.email)
 
@@ -49,7 +49,7 @@ class CreateUser:
             )
             user_id = await user_repository.save_user(user)
 
-            uow.commit()
+            await uow.commit()
 
         return user_id
 
@@ -59,7 +59,7 @@ class UpdateUser:
         self.uow = uow
 
     async def execute(self, dto: UpdateUserDTO) -> UserId:
-        with self.uow as uow:
+        async with self.uow as uow:
             user_repository = uow.users
             is_user_exists = await user_repository.does_user_exist(dto.user_id)
 
@@ -86,7 +86,7 @@ class UpdateUser:
             )
             user_id = await user_repository.save_user(user)
 
-            uow.commit()
+            await uow.commit()
 
         return user_id
 
@@ -97,7 +97,7 @@ class DeleteUser:
 
     async def execute(self, dto: DeleteUserDTO) -> None:
         user_id = dto.user_id
-        with self.uow as uow:
+        async with self.uow as uow:
             user_repository = uow.users
             is_user_exists = await user_repository.does_user_exist(user_id)
 
@@ -108,4 +108,4 @@ class DeleteUser:
 
             await user_repository.delete_user(user_id)
 
-            uow.commit()
+            await uow.commit()

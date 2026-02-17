@@ -117,7 +117,7 @@ class ProcessPaymentSystemWebHook:
 
         payment_system_secret_key = self.config.secret_key
 
-        with self.uow as uow:
+        async with self.uow as uow:
             user_repository = uow.users
             account_repository = uow.accounts
 
@@ -168,6 +168,6 @@ class ProcessPaymentSystemWebHook:
             account.accrue_payment_entry(pe_id)
             account_id = await account_repository.save_account(account)
 
-            uow.commit()
+            await uow.commit()
 
         return account_id, pe_id, is_account_created

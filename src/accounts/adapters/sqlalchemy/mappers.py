@@ -89,29 +89,20 @@ class UserMapper:
 
     @staticmethod
     def to_orm(user_dto: UserDTO) -> User:
-        model_map = {
-            "user": AccountsUser,
-            "admin": Administrator,
+        # Используем словарь для выбора класса
+        model_classes = {
+            UserType.USER: AccountsUser,
+            UserType.ADMIN: Administrator,
         }
 
-        model_class = model_map.get(user_dto.user_type, User)
+        cls = model_classes.get(user_dto.user_type)
+        if not cls:
+            raise ValueError(f"Unknown user type: {user_dto.user_type}")
 
-        match user_dto.user_type:
-            case UserType.USER:
-                model_class = AccountsUser(
-                    id=user_dto.user_id,
-                    full_name=user_dto.full_name,
-                    email_address=user_dto.email,
-                    password_hash=user_dto.password_hash,
-                )
-            case UserType.ADMIN:
-                model_class = Administrator(
-                    id=user_dto.user_id,
-                    full_name=user_dto.full_name,
-                    email_address=user_dto.email,
-                    password_hash=user_dto.password_hash,
-                )
-            case _:
-                raise ValueError
-
-        return model_class
+        # Создаем ORM объект
+        return cls(
+            id=user_dto.user_id,  # Если id=None, SQLAlchemy поймет, что это новый юзер
+            full_name=user_dto.full_name,
+            email_address=user_dto.email,
+            password_hash=user_dto.password_hash,
+        )

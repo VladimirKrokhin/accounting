@@ -9,7 +9,7 @@ async def get_user_accounts(
     uow: AbstractUnitOfWork,
 ) -> list[Account]:
 
-    with uow:
+    async with uow:
         account_repository = uow.accounts
         user_repository = uow.users
         is_user_exists = await user_repository.does_user_exist(user_id)
@@ -26,7 +26,7 @@ async def get_user_payments(
     uow: AbstractUnitOfWork,
 ) -> list[PaymentEntry]:
 
-    with uow:
+    async with uow:
         account_repository = uow.accounts
         user_repository = uow.users
         is_user_exists = await user_repository.does_user_exist(user_id)
@@ -40,7 +40,7 @@ async def get_user_payments(
 
 
 async def get_user_data(user_id: UserId, uow: AbstractUnitOfWork) -> UserDTO:
-    with uow:
+    async with uow:
         user_repository = uow.users
 
         user = await user_repository.get_user(user_id)
@@ -49,7 +49,7 @@ async def get_user_data(user_id: UserId, uow: AbstractUnitOfWork) -> UserDTO:
 
 
 async def get_users(uow: AbstractUnitOfWork):
-    with uow:
+    async with uow:
         user_repository = uow.users
 
         users = await user_repository.get_users()

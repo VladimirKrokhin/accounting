@@ -5,13 +5,14 @@ from typing import Optional
 from sqlalchemy import UUID, Boolean, ForeignKey, Numeric, Uuid
 from sqlalchemy import String
 from sqlalchemy import Numeric
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 
-class Base(DeclarativeBase):
+class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 
@@ -102,7 +103,6 @@ class PaymentEntry(Base):
 
     __tablename__ = "payment_entry"
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
-    # FIXME: смени тип
     transaction_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
     amount: Mapped[Decimal] = mapped_column(Numeric())
