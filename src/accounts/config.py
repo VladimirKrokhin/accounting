@@ -91,19 +91,15 @@ def parse_time(time_str: str) -> timedelta:
 
 
 def load_config() -> Config:
-    postgres_host = os.environ.get("POSTGRES_HOST", "localhost")
-    postgres_port = int(os.environ.get("POSTGRES_HOST", 5432))
-    postgres_password = os.environ.get("POSTGRES_PASSWORD", "accounts")
-    postgres_user = os.environ.get("POSTGRES_USER", "accounts")
-    postgres_db_name = os.environ.get("POSTGRES_DB_NAME", "accounts")
-    payment_system_secret_key = os.environ.get(
-        "PAYMENT_SYSTEM_SECRET_KEY", "gfdmhghif38yrf9ew0jkf32"
-    )
-    auth_expiration_time = parse_time(
-        os.environ.get("AUTH_EXPIRATION_TIME", "24hr0m0s")
-    )
-    auth_encryption_algorithm = os.environ.get("AUTH_ENCRYPTION_ALGORITHM", "HS256")
-    auth_secret_key = os.environ.get("AUTH_SECRET_KEY", "your-very-secret-key")
+    postgres_host = os.environ["POSTGRES_HOST"]
+    postgres_port = int(os.environ["POSTGRES_PORT"])
+    postgres_password = os.environ["POSTGRES_PASSWORD"]
+    postgres_user = os.environ["POSTGRES_USER"]
+    postgres_db_name = os.environ["POSTGRES_DB_NAME"]
+    payment_system_secret_key = os.environ["PAYMENT_SYSTEM_SECRET_KEY"]
+    auth_expiration_time = parse_time(os.environ["AUTH_EXPIRATION_TIME"])
+    auth_encryption_algorithm = os.environ["AUTH_ENCRYPTION_ALGORITHM"]
+    auth_secret_key = os.environ["AUTH_SECRET_KEY"]
 
     config = Config(
         POSTGRES_HOST=postgres_host,

@@ -4,24 +4,28 @@ from sanic_testing import TestManager
 
 from accounts.adapters.auth import generate_password_hash
 from accounts.adapters.sqlalchemy.db import Base
+from accounts.config import load_config
 from accounts.core.types import UserId
 from accounts.dtos import UserDTO, UserType
 from accounts.entrypoints.sanic_app import create_app, init_app
 from accounts.service_layer.unit_of_work import SqlAlchemyUnitOfWork
 
-
-@pytest.fixture(scope="session", autouse=True)
-def load_test_env() -> None:
-    env_file = find_dotenv(".env.tests")
-    load_dotenv(env_file)
+load_dotenv("tests/.env.tests", override=True)
 
 
 @pytest.fixture
 async def test_app():
+
+    config = load_config()
+    print(
+        f"\n[TEST_DB_CHECK] Host: {config.POSTGRES_HOST}, DB: {config.POSTGRES_DB_NAME}"
+    )
     app = create_app()
-    await init_app(app)
+
+    await init_app(app, config)
 
     uow: SqlAlchemyUnitOfWork = app.ctx.uow
+
     async with uow:
         session = uow.session
         engine = session.bind

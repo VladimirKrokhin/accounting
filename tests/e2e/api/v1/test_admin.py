@@ -1,6 +1,5 @@
 import pytest
 
-from accounts.entrypoints.sanic_app.status_codes import StatusCodes
 from e2e.api.v1.api_client import (
     delete_user,
     get_users,
@@ -28,7 +27,7 @@ async def test_admin_create_user(test_client, admin_token):
         password="securepass",
     )
 
-    assert response.status_code == StatusCodes.SUCCESS_CREATED
+    assert response.status_code == 201
     assert response.json["status"] == "success"
 
 
@@ -36,7 +35,7 @@ async def test_admin_create_user(test_client, admin_token):
 async def test_admin_get_users(test_client, admin_token):
     request, response = await get_users(test_client, admin_token)
 
-    assert response.status_code == StatusCodes.SUCCESS
+    assert response.status_code == 200
     assert isinstance(response.json["users"], list)
     assert len(response.json["users"]) >= 1  # Как минимум сам админ там есть
 
@@ -63,7 +62,7 @@ async def test_admin_update_user(test_client, admin_token, regular_user):
         test_client=test_client,
     )
 
-    assert response.status_code == StatusCodes.SUCCESS_NO_CONTENT
+    assert response.status_code == 204
 
     # Проверка (можно сделать логин с новым паролем или get_users)
 
@@ -87,4 +86,4 @@ async def test_admin_delete_user(test_client, admin_token):
     request_delete_user, response_delete_user = await delete_user(
         test_client, admin_token, target_id
     )
-    assert response_delete_user.status_code == StatusCodes.SUCCESS_NO_CONTENT
+    assert response_delete_user.status_code == 204

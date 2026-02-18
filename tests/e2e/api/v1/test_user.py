@@ -1,5 +1,4 @@
 import pytest
-from accounts.entrypoints.sanic_app.status_codes import StatusCodes
 from .api_client import (
     post_auth,
     get_current_user,
@@ -19,7 +18,7 @@ async def user_token(test_client, regular_user):
 async def test_get_me_success(test_client, user_token, regular_user):
     request, response = await get_current_user(test_client, user_token)
 
-    assert response.status_code == StatusCodes.SUCCESS
+    assert response.status_code == 200
     assert response.json["user"]["email"] == regular_user.email
     # Пароль (хэш) не должен возвращаться в ответе
     assert "password" not in response.json["user"]
@@ -30,7 +29,7 @@ async def test_get_me_success(test_client, user_token, regular_user):
 async def test_get_my_accounts(test_client, user_token):
     request, response = await get_current_user_accounts(test_client, user_token)
 
-    assert response.status_code == StatusCodes.SUCCESS
+    assert response.status_code == 200
     assert isinstance(response.json["user"]["accounts"], list)
     # Если у юзера при создании был счет, проверяем его наличие
     # assert len(body["user"]["accounts"]) > 0

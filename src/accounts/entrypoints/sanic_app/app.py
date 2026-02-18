@@ -32,8 +32,9 @@ async def init_uow(postgres_config: PostgresConfig):
     return uow
 
 
-async def init_app(app: Sanic) -> Sanic:
-    app_config = load_config()
+async def init_app(app: Sanic, config=None) -> Sanic:
+    app_config = config or load_config()
+
     app.update_config(app_config)
     uow = await init_uow(app_config.get_postgres_config())
     app.ctx.uow = uow

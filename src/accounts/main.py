@@ -7,7 +7,7 @@ app = create_app()
 
 
 def start_app():
-    env_file = find_dotenv(".env.production")
+    env_file = find_dotenv(".env.prod")
     load_dotenv(env_file)
     app.run()
 

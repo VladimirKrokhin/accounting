@@ -3,7 +3,6 @@ import hashlib
 from uuid import uuid4
 from accounts.adapters.sqlalchemy.models import Base
 from accounts.entrypoints.sanic_app import create_app, init_app
-from accounts.entrypoints.sanic_app.status_codes import StatusCodes
 from accounts.service_layer.unit_of_work import SqlAlchemyUnitOfWork
 from e2e.api.v1.api_client import post_transaction
 
@@ -50,7 +49,7 @@ async def test_webhook_transaction_success(test_client, regular_user, test_app):
         signature=signature,
     )
 
-    assert response.status_code == StatusCodes.SUCCESS_CREATED
+    assert response.status_code == 201
     assert response.json["status"] == "success"
 
 
@@ -65,5 +64,5 @@ async def test_webhook_invalid_signature(test_client, regular_user):
         signature="fake_signature_123",
     )
 
-    assert response.status_code == StatusCodes.ERROR_UNPROCESSABLE_ENTITY
+    assert response.status_code == 422
     assert response.json["message"] == "signature is not valid"
