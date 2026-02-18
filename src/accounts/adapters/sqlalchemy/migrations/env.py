@@ -1,7 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -24,12 +24,30 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+from accounts.adapters.sqlalchemy.models import (
+    User,
+    Administrator,
+    AccountsUser,
+    Account,
+    PaymentEntry,
+)
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def get_db_url():
+    dotenv_file = find_dotenv(".envs/.env.prod")
+    load_dotenv(dotenv_file)
+    app_config = load_config()
+    pg_config = app_config.get_postgres_config()
+    db_url = get_postgres_uri(pg_config)
+
+    return db_url
 
 
 def run_migrations_offline() -> None:
@@ -44,10 +62,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    load_dotenv(".env.prod")
-    app_config = load_config()
-    pg_config = app_config.get_postgres_config()
-    db_url = get_postgres_uri(pg_config)
+    db_url = get_db_url()
 
     context.configure(
         url=db_url,
@@ -72,10 +87,7 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-    load_dotenv(".env.prod")
-    app_config = load_config()
-    pg_config = app_config.get_postgres_config()
-    db_url = get_postgres_uri(pg_config)
+    db_url = get_db_url()
 
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = db_url

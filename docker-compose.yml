@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    env_file:
+      - .envs/.env.docker.prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  accounts_app:
+    build:
+      context: .
+      target: runtime
+    container_name: accounts_app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .envs/.env.docker.prod
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

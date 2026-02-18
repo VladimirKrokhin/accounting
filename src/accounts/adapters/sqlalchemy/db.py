@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
-from accounts.adapters.sqlalchemy.models import Base
 from accounts.config import PostgresConfig
 
 
@@ -28,8 +27,6 @@ def create_async_session_factory(engine: AsyncEngine) -> async_sessionmaker:
 
 async def init_db(config: PostgresConfig) -> async_sessionmaker:
     engine = create_async_sqlalchemy_engine(config)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     session_factory = create_async_session_factory(engine)
 

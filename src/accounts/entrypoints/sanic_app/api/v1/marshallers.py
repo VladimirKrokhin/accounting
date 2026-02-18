@@ -20,7 +20,7 @@ def dictify_payment(payment: PaymentEntry) -> dict[str, Any]:
         "is_accrued": payment.is_accrued,
     }
 
-    return {"payments": res}
+    return res
 
 
 def dictify_account(account: Account) -> dict[str, Any]:
@@ -35,7 +35,7 @@ def dictify_account(account: Account) -> dict[str, Any]:
         "balance": account.balance,
     }
 
-    return {"account": res}
+    return res
 
 
 def dictify_user(user: UserDTO) -> dict[str, Any]:

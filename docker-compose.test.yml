@@ -1,0 +1,35 @@
+networks:
+  test_net:
+    driver: bridge
+
+services:
+  db_test:
+    image: postgres:15-alpine
+    container_name: postgres_test-db
+    env_file:
+      - .envs/.env.docker.tests
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - test_net
+
+  tests:
+    environment:
+      PYTHONUNBUFFERED: 1
+    build:
+      context: .
+      target: testing
+    container_name: accounts_tests
+    env_file:
+      - .envs/.env.docker.tests
+    depends_on:
+      db_test:
+        condition: service_healthy
+    networks:
+      - test_net

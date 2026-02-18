@@ -11,12 +11,15 @@ post {
 }
 
 body:json {
-  {"email": "{{user_email}}", "password": "{{user_password}}"}
+  {
+    "email": "{{user_email}}",
+    "password": "{{user_password}}"
+  }
 }
 
 vars:pre-request {
-  user_email: test@user.org
-  user_password: 1234
+  user_email: admin@test.com
+  user_password: admin_password
 }
 
 settings {

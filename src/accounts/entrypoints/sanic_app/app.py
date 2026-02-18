@@ -1,3 +1,4 @@
+from dotenv import find_dotenv, load_dotenv
 from sanic import Sanic
 
 from accounts.adapters.sqlalchemy.db import (
@@ -12,7 +13,11 @@ from accounts.entrypoints.sanic_app.api import get_api_bp
 __all__ = ["create_app", "init_app"]
 
 
-def create_app() -> Sanic:
+def create_app(read_dotenv=False) -> Sanic:
+    if read_dotenv:
+        env_file = find_dotenv(".envs/.env.prod")
+        load_dotenv(env_file)
+
     app = Sanic("accounts")
 
     api = get_api_bp()

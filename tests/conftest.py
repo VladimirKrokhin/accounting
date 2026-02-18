@@ -10,7 +10,8 @@ from accounts.dtos import UserDTO, UserType
 from accounts.entrypoints.sanic_app import create_app, init_app
 from accounts.service_layer.unit_of_work import SqlAlchemyUnitOfWork
 
-load_dotenv("tests/.env.tests", override=True)
+test_dotenv = find_dotenv(".envs/.env.tests")
+load_dotenv(test_dotenv, override=True)
 
 
 @pytest.fixture

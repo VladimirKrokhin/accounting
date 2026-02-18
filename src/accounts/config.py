@@ -95,7 +95,7 @@ def load_config() -> Config:
     postgres_port = int(os.environ["POSTGRES_PORT"])
     postgres_password = os.environ["POSTGRES_PASSWORD"]
     postgres_user = os.environ["POSTGRES_USER"]
-    postgres_db_name = os.environ["POSTGRES_DB_NAME"]
+    postgres_db_name = os.environ["POSTGRES_DB"]
     payment_system_secret_key = os.environ["PAYMENT_SYSTEM_SECRET_KEY"]
     auth_expiration_time = parse_time(os.environ["AUTH_EXPIRATION_TIME"])
     auth_encryption_algorithm = os.environ["AUTH_ENCRYPTION_ALGORITHM"]
