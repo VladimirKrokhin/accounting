@@ -3,12 +3,12 @@ import pytest
 from sanic_testing import TestManager
 
 from accounts.adapters.auth import generate_password_hash
-from accounts.adapters.sqlalchemy.db import Base
 from accounts.config import load_config
 from accounts.core.types import UserId
 from accounts.dtos import UserDTO, UserType
 from accounts.entrypoints.sanic_app import create_app, init_app
 from accounts.service_layer.unit_of_work import SqlAlchemyUnitOfWork
+from accounts.adapters.sqlalchemy.models import Base
 
 test_dotenv = find_dotenv(".envs/.env.tests")
 load_dotenv(test_dotenv, override=True)
